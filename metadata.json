@@ -1,0 +1,5 @@
+{
+  "name": "ADK & Chainlit Agent Builder",
+  "description": "A visual canvas-like tool to configure and generate the boilerplate code for an agent using the Agent Development Kit (ADK) and the Chainlit frontend. Define your agent's personality, tools, and UI, then generate the Python code instantly.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ADK & Chainlit Agent Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+      /* For Webkit-based browsers (Chrome, Safari) */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1e293b; /* slate-800 */
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #475569; /* slate-600 */
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #64748b; /* slate-500 */
+      }
+      
+      /* Workflow Designer Animations */
+      @keyframes marching-ants {
+        to {
+          background-position: 0 20px;
+        }
+      }
+      .animated-line {
+        background: linear-gradient(to bottom, #475569 50%, #1e293b 50%); /* slate-600 to slate-800 */
+        background-size: 100% 20px;
+        animation: marching-ants 1s linear infinite;
+      }
+      .animated-line-active {
+        background: linear-gradient(to bottom, #10b981 50%, #34d399 50%); /* emerald-500 to emerald-400 */
+        background-size: 100% 20px;
+        animation: marching-ants 0.5s linear infinite;
+      }
+      
+      /* Hierarchical Tree View Visualization */
+      .hierarchical-view .children-container {
+        position: relative;
+        /* Indent children. `pl-6` is 1.5rem */
+        padding-left: 1.5rem; 
+        /* Align under parent text. Based on AgentItem's internal padding */
+        margin-left: 0.75rem; 
+      }
+      /* Vertical line connecting children of a node */
+      .hierarchical-view .children-container::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background-color: #475569; /* slate-600 */
+      }
+      .hierarchical-view .node-wrapper {
+        position: relative;
+      }
+      /* Horizontal line connecting a node to the vertical line */
+      .hierarchical-view .node-wrapper::before {
+        content: '';
+        position: absolute;
+        left: -1.5rem; /* Connect back to the vertical line */
+        top: 50%;
+        transform: translateY(-50%);
+        width: 1.5rem;
+        height: 2px;
+        background-color: #475569; /* slate-600 */
+      }
+
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+  }
+}
+</script>
+</head>
+  <body class="bg-slate-900 text-slate-100">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
