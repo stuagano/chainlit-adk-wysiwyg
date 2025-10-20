@@ -3,6 +3,7 @@ import { Agent } from '../types';
 import { Card } from './common/Card';
 import { Input } from './common/Input';
 import { Textarea } from './common/Textarea';
+import { AdvancedAgentConfig } from './AdvancedAgentConfig';
 
 interface AgentConfigProps {
   agent: Agent;
@@ -29,6 +30,8 @@ export const AgentConfig: React.FC<AgentConfigProps> = ({ agent, updateAgent }) 
           onChange={(e) => updateAgent('system_prompt', e.target.value)}
           placeholder="Define the agent's personality and instructions..."
         />
+        <div className="border-t border-slate-700 -mx-6"></div>
+        <AdvancedAgentConfig agent={agent} updateAgent={updateAgent} />
       </div>
     </Card>
   );

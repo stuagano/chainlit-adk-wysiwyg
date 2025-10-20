@@ -31,6 +31,8 @@ export const initialAgentsState: Agent[] = [
     },
   ],
   parentId: null,
+  llmModel: 'gemini-1.5-flash',
+  temperature: 0.7,
 }];
 
 export const initialGCPState: GCPConfig = {
@@ -39,6 +41,7 @@ export const initialGCPState: GCPConfig = {
     region: 'us-central1',
     serviceAccountKeyJson: '',
     serviceAccountKeyName: '',
+    useMemoryBank: false,
 };
 
 export const createNewAgent = (parentId: string | null = null): Agent => ({
@@ -49,4 +52,6 @@ export const createNewAgent = (parentId: string | null = null): Agent => ({
     input_placeholder: 'Enter your query...',
     tools: [],
     parentId,
+    llmModel: 'gemini-1.5-flash',
+    temperature: 0.7,
 });

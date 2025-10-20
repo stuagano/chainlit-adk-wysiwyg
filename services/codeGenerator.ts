@@ -75,19 +75,61 @@ def ${snakeCaseToolName}(inputs: ${modelName}) -> str:
     return imports + classAndFuncStrings + toolList;
 };
 
-const generateMainPy = (agents: Agent[], workflowType: WorkflowType): string => {
+const generateMainPy = (agents: Agent[], gcpConfig: GCPConfig, workflowType: WorkflowType): string => {
     if (agents.length === 0) {
         return `# No agents defined. Please add an agent to the workflow.`;
     }
 
+    const allModels = agents.map(agent => agent.llmModel);
+    const usesOpenAI = allModels.some(model => !model.startsWith('gemini'));
+    const usesVertex = allModels.some(model => model.startsWith('gemini'));
+
+    let imports = `import chainlit as cl
+import os
+from adk.agent import Agent
+from adk.workflow import ${toPascalCase(workflowType)}
+`;
+    if (usesOpenAI) {
+        imports += 'from adk.llm.provider.openai import OpenAI\n';
+    }
+    if (usesVertex) {
+        imports += 'from adk.llm.provider.vertex import VertexAI\n';
+    }
+
+    let memoryImport: string;
+    let memoryInstantiation: string;
+    if (gcpConfig.useMemoryBank) {
+        memoryImport = 'from adk.memory.google.memory_bank import MemoryBank';
+        memoryInstantiation = `MemoryBank(project_id="${gcpConfig.projectId}", location="${gcpConfig.region}")`;
+    } else {
+        memoryImport = 'from adk.memory.memory import Memory as LocalMemory';
+        memoryInstantiation = 'LocalMemory()';
+    }
+
+    const envChecks: string[] = [];
+    if (usesOpenAI) {
+        envChecks.push(`if not os.getenv("OPENAI_API_KEY"):
+    raise ValueError("OPENAI_API_KEY environment variable not set")`);
+    }
+    if (usesVertex || gcpConfig.useMemoryBank) {
+        envChecks.push(`if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+    print("Warning: GOOGLE_APPLICATION_CREDENTIALS environment variable not set. Using default credentials.")`);
+    }
+
     const agentCreationFunctions = agents.map((agent, index) => {
         const agentFunctionName = `create_agent_${index + 1}`;
+        let llmInstantiation: string;
+        if (agent.llmModel.startsWith('gemini')) {
+            llmInstantiation = `VertexAI(model="${agent.llmModel}", temperature=${agent.temperature})`;
+        } else {
+            llmInstantiation = `OpenAI(model="${agent.llmModel}", temperature=${agent.temperature})`;
+        }
         return `
 def ${agentFunctionName}() -> Agent:
     """Instantiates the '${agent.name}' agent."""
     return Agent(
-        llm=OpenAI(),
-        memory=LocalMemory(),
+        llm=${llmInstantiation},
+        memory=${memoryInstantiation},
         system_prompt=\"\"\"${agent.system_prompt}\"\"\",
         tools=agent_tools,
     )
@@ -161,16 +203,8 @@ def ${agentFunctionName}() -> Agent:
             break;
     }
 
-    const workflowClass = toPascalCase(workflowType);
-
-    return `import chainlit as cl
-import os
-from adk.agent import Agent
-from adk.workflow import ${workflowClass}
-from adk.llm.provider.openai import OpenAI
-from adk.embedding.provider.openai import OpenAIEmbedding
-
-from adk.memory.memory import Memory as LocalMemory
+    return `${imports}
+${memoryImport}
 
 # Import your tools. ADK will automatically discover them in the 'tools.py' file.
 import tools as agent_tools
@@ -179,10 +213,7 @@ import tools as agent_tools
 # from dotenv import load_dotenv
 # load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY environment variable not set")
-
+${envChecks.join('\n\n')}
 ${agentCreationFunctions}
 
 @cl.on_chat_start
@@ -223,15 +254,27 @@ cl.Copilot(
 `;
 };
 
-const generateRequirementsTxt = (): string => {
-    return `chainlit
-adk
-openai
-# The ADK may have an optional dependency for Agent Engine.
-# e.g., adk[agent-engine]
+const generateRequirementsTxt = (agents: Agent[], gcpConfig: GCPConfig): string => {
+    const requirements = new Set<string>(['chainlit', 'adk']);
+    const allModels = agents.map(agent => agent.llmModel);
+
+    if (allModels.some(model => !model.startsWith('gemini'))) {
+        requirements.add('openai');
+    }
+    if (allModels.some(model => model.startsWith('gemini')) || gcpConfig.useMemoryBank) {
+        requirements.add('google-cloud-aiplatform');
+        // You might need adk[google] for full functionality
+    }
+    
+    let reqs = Array.from(requirements).join('\n');
+
+    reqs += `
+# The ADK may have optional dependencies.
+# e.g., adk[google] for full GCP support.
 # python-dotenv # Recommended for local development
 # redis # Uncomment if you use Redis for memory
 `;
+    return reqs;
 };
 
 const generateReadme = (agents: Agent[], gcpConfig: GCPConfig, workflowType: WorkflowType): string => {
@@ -271,10 +314,12 @@ This project is pre-configured for easy deployment to Google Cloud Agent Engine.
                 const prefix = '  '.repeat(level) + '- ';
                 const tools = agent.tools.length > 0 ? `(Tools: ${agent.tools.map(t => `\`${t.name}\``).join(', ')})` : '';
                 const children = buildAgentTree(agent.id, level + 1);
-                return `${prefix}**${agent.name}** ${tools}\n${children}`;
+                return `${prefix}**${agent.name}** (LLM: \`${agent.llmModel}\`) ${tools}\n${children}`;
             })
             .join('');
     };
+
+    const agentListItem = (agent: Agent) => `- **${agent.name}** (LLM: \`${agent.llmModel}\`): ${agent.tools.length > 0 ? `(Tools: ${agent.tools.map(t => `\`${t.name}\``).join(', ')})` : ''}`;
 
 
     switch (workflowType) {
@@ -282,14 +327,24 @@ This project is pre-configured for easy deployment to Google Cloud Agent Engine.
             agentOverview = `This is a hierarchical workflow where agents operate in a supervisor-subordinate structure.\n\n${buildAgentTree()}`;
             break;
         case 'Collaborative':
-            agentOverview = `This is a collaborative workflow where ${agents.length} agents work as a team of peers.\n\n` + agents.map(agent => `- **${agent.name}**: ${agent.tools.length > 0 ? `(Tools: ${agent.tools.map(t => `\`${t.name}\``).join(', ')})` : ''}`).join('\n');
+            agentOverview = `This is a collaborative workflow where ${agents.length} agents work as a team of peers.\n\n` + agents.map(agentListItem).join('\n');
             break;
         case 'Sequential':
         default:
-             agentOverview = `This is a sequential workflow consisting of ${agents.length} agent(s). The output of one agent is passed as the input to the next.\n\n` + agents.map((agent, index) => `**Step ${index + 1}: ${agent.name}**\n   - **Tools:** ${agent.tools.length > 0 ? agent.tools.map(t => `\`${t.name}\``).join(', ') : 'None'}`).join('\n');
+             agentOverview = `This is a sequential workflow consisting of ${agents.length} agent(s). The output of one agent is passed as the input to the next.\n\n` + agents.map((agent, index) => `**Step ${index + 1}: ${agent.name}** (LLM: \`${agent.llmModel}\`)\n   - **Tools:** ${agent.tools.length > 0 ? agent.tools.map(t => `\`${t.name}\``).join(', ') : 'None'}`).join('\n');
             break;
 
     }
+
+    const memorySection = gcpConfig.useMemoryBank ? `
+### 🧠 Memory Bank
+
+This agent is configured to use **GCP Memory Bank**, providing a persistent, managed memory solution. Ensure your deployment environment has the correct permissions to access the Memory Bank API in project \`${gcpConfig.projectId}\`.
+` : `
+### 🧠 Local Memory
+
+This agent is configured to use in-memory storage, which is reset on each session start. For persistent memory, consider enabling Memory Bank in the GCP settings and redeploying.
+`;
 
     return `# Multi-Agent Workflow - ADK & Chainlit
 
@@ -298,6 +353,8 @@ This multi-agent workflow was configured and generated using the ADK & Chainlit 
 ## Workflow Overview: ${workflowType}
 
 ${agentOverview}
+
+${memorySection}
 
 ## 🚀 Local Setup & Run
 
@@ -309,9 +366,14 @@ The local setup allows you to test your agent's logic and Chainlit UI before dep
     \`\`\`
 
 2.  **Set Environment Variables:**
-    Create a \`.env\` file and add your OpenAI API key.
+    Create a \`.env\` file and add your necessary API keys and credentials.
     \`\`\`.env
+    # For OpenAI Models
     OPENAI_API_KEY="your-openai-api-key-here"
+
+    # For Google (Vertex AI) Models & Memory Bank
+    # This file should contain your GCP service account key
+    GOOGLE_APPLICATION_CREDENTIALS="./gcp-credentials.json"
     \`\`\`
 
 3.  **Run the Chainlit App:**
@@ -391,9 +453,9 @@ export const generateCode = (agents: Agent[], gcpConfig: GCPConfig, workflowType
     const allTools = agents.flatMap(agent => agent.tools);
 
     const files: Record<string, string> = {
-        'main.py': generateMainPy(agents, workflowType),
+        'main.py': generateMainPy(agents, gcpConfig, workflowType),
         'tools.py': generateToolsPy(allTools),
-        'requirements.txt': generateRequirementsTxt(),
+        'requirements.txt': generateRequirementsTxt(agents, gcpConfig),
         'README.md': generateReadme(agents, gcpConfig, workflowType),
         'Dockerfile': generateDockerfile(),
         '.gcloudignore': generateGcloudIgnore(),

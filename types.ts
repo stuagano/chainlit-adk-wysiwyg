@@ -23,6 +23,8 @@ export interface Agent {
   input_placeholder: string;
   tools: Tool[];
   parentId: string | null;
+  llmModel: string;
+  temperature: number;
 }
 
 export interface GCPConfig {
@@ -31,6 +33,7 @@ export interface GCPConfig {
     region: string;
     serviceAccountKeyJson: string;
     serviceAccountKeyName: string;
+    useMemoryBank: boolean;
 }
 
 export interface ParameterValidationError {

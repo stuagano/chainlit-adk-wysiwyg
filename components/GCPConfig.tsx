@@ -82,6 +82,29 @@ export const GCPConfig: React.FC<GCPConfigProps> = ({ gcpConfig, updateGCPConfig
                         The key is read in-browser and added to the zip. It is never stored or transmitted.
                     </p>
                 </div>
+                 <div className="border-t border-slate-700 pt-4 mt-2">
+                    <div className="flex items-center justify-between">
+                         <div>
+                            <label htmlFor="useMemoryBank" className={`font-medium transition-colors ${gcpConfig.projectId ? 'text-slate-300' : 'text-slate-500'}`}>
+                                Enable Memory Bank
+                            </label>
+                            <p className={`text-sm transition-colors ${gcpConfig.projectId ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Use GCP's managed, persistent memory. Requires deployment.
+                            </p>
+                        </div>
+                         <label htmlFor="useMemoryBank" className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                id="useMemoryBank"
+                                className="sr-only peer"
+                                checked={gcpConfig.useMemoryBank}
+                                onChange={e => updateGCPConfig('useMemoryBank', e.target.checked)}
+                                disabled={!gcpConfig.projectId}
+                            />
+                            <div className="w-11 h-6 bg-slate-600 rounded-full peer peer-focus:ring-4 peer-focus:ring-sky-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+                        </label>
+                    </div>
+                </div>
             </div>
         </Card>
     );
