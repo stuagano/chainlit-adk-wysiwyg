@@ -1,0 +1,38 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "outDir": "./dist",
+    "rootDir": ".",
+    "noEmit": false,
+    "allowImportingTsExtensions": true,
+
+    /* Remove browser-specific settings */
+    "lib": ["ES2022"],
+    "jsx": "preserve",
+
+    /* Node.js specific */
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+
+    /* Relax some strict checks for Express route handlers */
+    "noImplicitReturns": false
+  },
+  "include": [
+    "server/**/*",
+    "services/**/*",
+    "utils/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "test/**/*",
+    "App.tsx",
+    "main.tsx",
+    "components/**/*"
+  ]
+}

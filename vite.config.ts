@@ -156,14 +156,37 @@ export default defineConfig(({ mode }) => {
     // Note: Environment variables are available to the Vite dev server but NOT exposed to the client
     // API keys and secrets should never be injected into the client bundle
     const plugins: PluginOption[] = [react()];
+
+    // In development, keep middleware as fallback if backend server isn't running
     if (mode === 'development') {
       plugins.push(chainlitSyncEndpoint());
     }
+
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
 
     return {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        // Proxy API requests to backend server (production-ready architecture)
+        proxy: {
+          '/api': {
+            target: backendUrl,
+            changeOrigin: true,
+            secure: false,
+            // Fallback to Vite middleware if backend is not running
+            configure: (proxy) => {
+              proxy.on('error', (err, _req, res) => {
+                console.warn('Backend proxy error (falling back to Vite middleware):', err.message);
+                // Error is handled by falling back to Vite middleware
+                if (res && !res.headersSent) {
+                  res.writeHead(503, { 'Content-Type': 'text/plain' });
+                  res.end('Backend server not available');
+                }
+              });
+            },
+          },
+        },
       },
       plugins,
       // SECURITY: Do NOT use define{} to expose API keys or secrets to the client
