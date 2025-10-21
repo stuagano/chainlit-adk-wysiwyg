@@ -16,7 +16,10 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,json,md}\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "security:audit": "bash scripts/security-audit.sh",
+    "security:npm": "npm audit --audit-level=moderate",
+    "security:fix": "npm audit fix"
   },
   "engines": {
     "node": ">=20.0.0",
