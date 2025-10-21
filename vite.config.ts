@@ -10,6 +10,7 @@ import { configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
 import { ensureChainlitRunning } from './services/chainlitProcess';
+import { validateFilenames } from './utils/validation';
 
 const execFileAsync = promisify(execFile);
 
@@ -42,6 +43,19 @@ const chainlitSyncEndpoint = () => ({
           res.statusCode = 400;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ error: 'Invalid payload: expected { files: Record<string, string> }' }));
+          return;
+        }
+
+        // Validate all filenames to prevent path traversal attacks
+        const filenames = Object.keys(files);
+        const validationResult = validateFilenames(filenames);
+        if (!validationResult.isValid) {
+          res.statusCode = 400;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            error: 'Invalid filenames detected',
+            details: `The following filenames are not allowed: ${validationResult.invalidFiles.join(', ')}`
+          }));
           return;
         }
 
