@@ -3,13 +3,13 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { IncomingMessage, ServerResponse } from 'node:http';
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { defineConfig, loadEnv, type PluginOption } from 'vite';
 import { configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,7 +66,7 @@ const chainlitSyncEndpoint = () => ({
 
           for (const target of pythonTargets) {
             try {
-              await execAsync(`python -m py_compile "${target}"`);
+              await execFileAsync('python', ['-m', 'py_compile', target]);
             } catch (error: any) {
               const stderr = error?.stderr?.toString().trim();
               const stdout = error?.stdout?.toString().trim();
