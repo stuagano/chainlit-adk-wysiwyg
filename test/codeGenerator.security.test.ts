@@ -91,7 +91,7 @@ describe('codeGenerator - Security', () => {
       const files = generateCode([mockAgent], gcpConfig, 'Sequential');
 
       // Check that private key is NOT in any generated file
-      Object.entries(files).forEach(([filename, content]) => {
+      Object.entries(files).forEach(([_filename, content]) => {
         expect(content).not.toContain('FAKE_PRIVATE_KEY');
         expect(content).not.toContain(fakeCredentials);
       });
@@ -131,13 +131,6 @@ describe('codeGenerator - Security', () => {
       const filenames = Object.keys(files);
 
       // Should not have any credential-related files
-      const credentialFilePatterns = [
-        'gcp-credentials.json',
-        'service-account',
-        'credentials.json',
-        '.json', // Any other JSON files besides package.json if it existed
-      ];
-
       filenames.forEach(filename => {
         if (filename.includes('credentials') || filename.includes('service-account')) {
           throw new Error(`Found credential file in generated files: ${filename}`);

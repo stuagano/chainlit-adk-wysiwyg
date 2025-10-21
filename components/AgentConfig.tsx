@@ -7,7 +7,7 @@ import { AdvancedAgentConfig } from './AdvancedAgentConfig';
 
 interface AgentConfigProps {
   agent: Agent;
-  updateAgent: (key: keyof Agent, value: any) => void;
+  updateAgent: (key: keyof Agent, value: Agent[keyof Agent]) => void;
 }
 
 export const AgentConfig: React.FC<AgentConfigProps> = ({ agent, updateAgent }) => {

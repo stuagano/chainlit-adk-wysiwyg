@@ -75,7 +75,7 @@ export const ToolsConfig: React.FC<ToolsConfigProps> = ({ tools, updateTools, va
         });
     };
 
-    const updateTool = (id: string, field: keyof Tool, value: any) => {
+    const updateTool = (id: string, field: keyof Tool, value: Tool[keyof Tool]) => {
         if (field === 'name') {
             clearToolError(id, 'name');
         }
@@ -110,7 +110,7 @@ export const ToolsConfig: React.FC<ToolsConfigProps> = ({ tools, updateTools, va
         updateTools(newTools);
     };
 
-    const updateParameter = (toolId: string, paramId: string, field: keyof Parameter, value: any) => {
+    const updateParameter = (toolId: string, paramId: string, field: keyof Parameter, value: Parameter[keyof Parameter]) => {
         if (field === 'name' || field === 'description') {
             clearParameterError(toolId, paramId, field);
         }
@@ -184,7 +184,7 @@ export const ToolsConfig: React.FC<ToolsConfigProps> = ({ tools, updateTools, va
                             </div>
                         </div>
                     )})}
-                     {tools.length === 0 && <p className="text-center text-slate-500 py-4">No tools defined. Click "Add Tool" to get started.</p>}
+                     {tools.length === 0 && <p className="text-center text-slate-500 py-4">No tools defined. Click &quot;Add Tool&quot; to get started.</p>}
                 </div>
             </div>
         </Card>

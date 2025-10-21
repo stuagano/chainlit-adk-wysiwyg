@@ -346,7 +346,7 @@ export const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({ agents, setA
                     {workflowType === 'Sequential' && <SequentialView {...sharedViewProps} />}
                     {workflowType === 'Hierarchical' && <HierarchicalView {...sharedViewProps} />}
                     {workflowType === 'Collaborative' && <CollaborativeView {...sharedViewProps} />}
-                    {agents.length === 0 && <p className="text-center text-slate-500 py-4">No agents in the workflow. Click "Add Agent" to begin.</p>}
+                    {agents.length === 0 && <p className="text-center text-slate-500 py-4">No agents in the workflow. Click &quot;Add Agent&quot; to begin.</p>}
                 </div>
             </div>
         </Card>

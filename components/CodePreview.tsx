@@ -24,16 +24,17 @@ export const CodePreview: React.FC<CodePreviewProps> = ({ code }) => {
   const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (code && !activeTab) {
+    if (code && Object.keys(code).length > 0 && !activeTab) {
       setActiveTab(Object.keys(code)[0]);
     }
-  }, [code, activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]); // Only run when code changes, not when activeTab changes
 
   if (!code) {
     return (
       <Card className="flex items-center justify-center h-96">
         <div className="text-center text-slate-500">
-          <p className="text-lg">Click the "Generate & Preview Code" button</p>
+          <p className="text-lg">Click the &quot;Generate & Preview Code&quot; button</p>
           <p>to see the generated Python files here.</p>
         </div>
       </Card>

@@ -278,7 +278,7 @@ def ${agentFunctionName}() -> Agent:
     return Agent(
         llm=${llmInstantiation},
         memory=${memoryInstantiation},
-        system_prompt=\"\"\"${agent.system_prompt}\"\"\",
+        system_prompt="""${agent.system_prompt}""",
         tools=agent_tools,
     )
 `;
@@ -291,7 +291,7 @@ def ${agentFunctionName}() -> Agent:
 
     let workflowInstantiation: string;
     switch(workflowType) {
-        case 'Hierarchical':
+        case 'Hierarchical': {
             const structure: Record<string, string[]> = {};
             agents.forEach(agent => {
               if (agent.parentId && agentVarMap.has(agent.parentId)) {
@@ -321,7 +321,8 @@ def ${agentFunctionName}() -> Agent:
     )
     cl.user_session.set("workflow", workflow)`;
             break;
-        case 'Collaborative':
+        }
+        case 'Collaborative': {
              workflowInstantiation = `
     # Create instances of each agent
     ${agents.map((_, index) => `agent_${index + 1} = create_agent_${index + 1}()`).join('\n    ')}
@@ -334,8 +335,9 @@ def ${agentFunctionName}() -> Agent:
     )
     cl.user_session.set("workflow", workflow)`;
             break;
+        }
         case 'Sequential':
-        default:
+        default: {
              workflowInstantiation = `
     # Create instances of each agent
     ${agents.map((_, index) => `agent_${index + 1} = create_agent_${index + 1}()`).join('\n    ')}
@@ -349,6 +351,7 @@ def ${agentFunctionName}() -> Agent:
     )
     cl.user_session.set("workflow", workflow)`;
             break;
+        }
     }
 
     return `${imports}

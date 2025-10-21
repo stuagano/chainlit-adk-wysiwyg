@@ -79,10 +79,10 @@ describe('validateFilename', () => {
     });
 
     it('rejects non-string inputs', () => {
-      expect(validateFilename(null as any)).toBe(false);
-      expect(validateFilename(undefined as any)).toBe(false);
-      expect(validateFilename(123 as any)).toBe(false);
-      expect(validateFilename({} as any)).toBe(false);
+      expect(validateFilename(null as unknown as string)).toBe(false);
+      expect(validateFilename(undefined as unknown as string)).toBe(false);
+      expect(validateFilename(123 as unknown as string)).toBe(false);
+      expect(validateFilename({} as unknown as string)).toBe(false);
     });
   });
 });
@@ -152,8 +152,8 @@ describe('sanitizeFilename', () => {
 
   it('handles empty or invalid input', () => {
     expect(sanitizeFilename('')).toBe('');
-    expect(sanitizeFilename(null as any)).toBe('');
-    expect(sanitizeFilename(undefined as any)).toBe('');
+    expect(sanitizeFilename(null as unknown as string)).toBe('');
+    expect(sanitizeFilename(undefined as unknown as string)).toBe('');
   });
 
   it('preserves valid filenames', () => {

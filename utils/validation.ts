@@ -93,7 +93,7 @@ export function sanitizeFilename(filename: string): string {
 
   return filename
     .replace(/\.\./g, '') // Remove path traversal
-    .replace(/[\/\\]/g, '_') // Replace path separators
+    .replace(/[/\\]/g, '_') // Replace path separators
     .replace(/\0/g, '') // Remove null bytes
     .replace(/[|&;$`!<>]/g, '') // Remove dangerous shell chars
     .trim();

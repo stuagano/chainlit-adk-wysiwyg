@@ -6,7 +6,7 @@ import { Textarea } from './common/Textarea';
 
 interface ChainlitConfigProps {
     agent: Agent;
-    updateAgent: (key: keyof Agent, value: any) => void;
+    updateAgent: (key: keyof Agent, value: Agent[keyof Agent]) => void;
 }
 
 export const ChainlitConfig: React.FC<ChainlitConfigProps> = ({ agent, updateAgent }) => {
