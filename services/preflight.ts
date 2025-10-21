@@ -23,6 +23,14 @@ function isPythonIdentifier(value: string) {
   return PYTHON_IDENTIFIER.test(value) && !PYTHON_KEYWORDS.has(value);
 }
 
+function toSnakeCase(str: string) {
+  return str
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/^(\d)/, '_$1');
+}
+
 function validateTool(tool: Tool, agentIndex: number, seen: Set<string>) {
   const issues: ValidationIssue[] = [];
   const pathRoot = `agents[${agentIndex}].tools[${tool.id}]`;
@@ -38,15 +46,25 @@ function validateTool(tool: Tool, agentIndex: number, seen: Set<string>) {
     return issues;
   }
 
+  const normalized = toSnakeCase(trimmedName);
+  const normalizedIsValid = isPythonIdentifier(normalized);
+
   if (!isPythonIdentifier(trimmedName)) {
-    issues.push({
-      severity: 'error',
-      message: `Tool name "${tool.name}" must be a valid Python identifier (letters, numbers, underscore; cannot start with a number or be a Python keyword).`,
-      path: `${pathRoot}.name`,
-    });
+    if (normalizedIsValid) {
+      issues.push({
+        severity: 'warning',
+        message: `Tool name "${tool.name}" will be sanitized to "${normalized}" in the generated code.`,
+        path: `${pathRoot}.name`,
+      });
+    } else {
+      issues.push({
+        severity: 'error',
+        message: `Tool name "${tool.name}" must be a valid Python identifier (letters, numbers, underscore; cannot start with a number or be a Python keyword).`,
+        path: `${pathRoot}.name`,
+      });
+    }
   }
 
-  const normalized = trimmedName.toLowerCase();
   if (seen.has(normalized)) {
     issues.push({
       severity: 'error',
@@ -70,12 +88,23 @@ function validateTool(tool: Tool, agentIndex: number, seen: Set<string>) {
       return;
     }
 
+    const sanitizedParam = toSnakeCase(paramName);
+    const sanitizedIsValid = isPythonIdentifier(sanitizedParam);
+
     if (!isPythonIdentifier(paramName)) {
-      issues.push({
-        severity: 'error',
-        message: `Parameter name "${parameter.name}" must be a valid Python identifier.`,
-        path: `${paramPath}.name`,
-      });
+      if (sanitizedIsValid) {
+        issues.push({
+          severity: 'warning',
+          message: `Parameter name "${parameter.name}" will be sanitized to "${sanitizedParam}" in the generated code.`,
+          path: `${paramPath}.name`,
+        });
+      } else {
+        issues.push({
+          severity: 'error',
+          message: `Parameter name "${parameter.name}" must be a valid Python identifier.`,
+          path: `${paramPath}.name`,
+        });
+      }
     }
   });
 
