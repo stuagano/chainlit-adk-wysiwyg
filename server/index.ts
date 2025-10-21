@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { ensureChainlitRunning } from '../services/chainlitProcess';
+import { ensureChainlitRunning } from '../services/chainlitProcessQueue';
 import { validateFilenames } from '../utils/validation';
 
 const execFileAsync = promisify(execFile);

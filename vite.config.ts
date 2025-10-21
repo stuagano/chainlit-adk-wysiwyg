@@ -9,7 +9,7 @@ import { defineConfig, type PluginOption, type ViteDevServer } from 'vite';
 import { configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
-import { ensureChainlitRunning } from './services/chainlitProcess';
+import { ensureChainlitRunning } from './services/chainlitProcessQueue';
 import { validateFilenames } from './utils/validation';
 
 const execFileAsync = promisify(execFile);
