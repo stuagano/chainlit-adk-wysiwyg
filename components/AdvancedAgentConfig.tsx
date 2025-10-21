@@ -31,6 +31,7 @@ export const AdvancedAgentConfig: React.FC<AdvancedAgentConfigProps> = ({ agent,
                         onChange={(e) => updateAgent('llmModel', e.target.value)}
                         className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                     >
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                         <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
                         <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                         <option value="gpt-4o">OpenAI GPT-4o</option>

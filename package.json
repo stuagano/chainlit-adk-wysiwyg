@@ -6,16 +6,28 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "chainlit:dev": "CHAINLIT_PORT=8000 chainlit run chainlit_app/main.py --watch",
+    "dev:all": "concurrently \"npm run dev\" \"npm run chainlit:dev\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@esbuild/darwin-arm64": "^0.25.11",
+    "@rollup/rollup-darwin-arm64": "^4.52.5",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^14.5.2",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.1",
+    "jsdom": "^25.0.1",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vitest": "^2.1.4"
   }
 }

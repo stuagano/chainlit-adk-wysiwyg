@@ -27,6 +27,8 @@ const App: React.FC = () => {
   const [gcpConfig, setGcpConfig] = useState<GCPConfigType>(initialGCPState);
   const [generatedCode, setGeneratedCode] = useState<Record<string, string> | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({ tools: {} });
+  const [chainlitSyncStatus, setChainlitSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+  const [chainlitSyncMessage, setChainlitSyncMessage] = useState('');
 
   const selectedAgent = useMemo(() => agents.find(a => a.id === selectedAgentId), [agents, selectedAgentId]);
 
@@ -71,6 +73,8 @@ const App: React.FC = () => {
   const handleGenerateCode = useCallback(() => {
     const { isValid, errors } = validateAgents(agents);
     setValidationErrors(errors);
+    setChainlitSyncStatus('idle');
+    setChainlitSyncMessage('');
 
     if (isValid) {
       const code = generateCode(agents, gcpConfig, workflowType);
@@ -79,6 +83,39 @@ const App: React.FC = () => {
       setGeneratedCode(null);
     }
   }, [agents, gcpConfig, workflowType]);
+
+  const handleSyncChainlit = useCallback(async () => {
+    if (!generatedCode) {
+      setChainlitSyncStatus('error');
+      setChainlitSyncMessage('Generate code before syncing to Chainlit.');
+      return;
+    }
+
+    try {
+      setChainlitSyncStatus('syncing');
+      setChainlitSyncMessage('');
+
+      const response = await fetch('/api/sync-chainlit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ files: generatedCode }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(data.error || 'Failed to sync Chainlit files');
+      }
+
+      setChainlitSyncStatus('success');
+      setChainlitSyncMessage('Synced to chainlit_app/. Run `npm run chainlit:dev` to preview.');
+    } catch (error) {
+      console.error(error);
+      setChainlitSyncStatus('error');
+      setChainlitSyncMessage(error instanceof Error ? error.message : 'Failed to sync Chainlit files');
+    }
+  }, [generatedCode]);
 
   const handleDownloadCode = () => {
     if (!generatedCode) return;
@@ -188,13 +225,20 @@ const App: React.FC = () => {
                 >
                 ✨ Generate Code
                 </button>
-                 <button
-                    onClick={handleDownloadCode}
+                <button
+                   onClick={handleDownloadCode}
                     disabled={!generatedCode}
                     className="w-full sm:w-auto bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center gap-2 shadow-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-sky-400 disabled:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:transform-none disabled:shadow-none"
                     >
                     <DownloadIcon />
                     Download .zip
+                </button>
+                 <button
+                    onClick={handleSyncChainlit}
+                    disabled={!generatedCode || chainlitSyncStatus === 'syncing'}
+                    className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold py-3 px-4 rounded-lg shadow-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-amber-300 disabled:bg-slate-600 disabled:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60 disabled:transform-none disabled:shadow-none"
+                    >
+                    {chainlitSyncStatus === 'syncing' ? 'Syncing…' : 'Sync to Chainlit'}
                 </button>
                  <button
                     onClick={resetForm}
@@ -203,6 +247,19 @@ const App: React.FC = () => {
                     Reset Form
                 </button>
             </div>
+            {chainlitSyncMessage && (
+              <p
+                className={`text-sm ${
+                  chainlitSyncStatus === 'error'
+                    ? 'text-red-400'
+                    : chainlitSyncStatus === 'success'
+                      ? 'text-emerald-400'
+                      : 'text-slate-400'
+                }`}
+              >
+                {chainlitSyncMessage}
+              </p>
+            )}
             <CodePreview code={generatedCode} />
         </div>
       </main>
