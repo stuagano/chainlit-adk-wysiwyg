@@ -188,6 +188,12 @@ const App: React.FC = () => {
         updateGCPConfig('serviceAccountKeyJson', content);
         updateGCPConfig('serviceAccountKeyName', file.name);
       };
+      reader.onerror = (error) => {
+        console.error('Failed to read file:', error);
+        alert('Failed to read the service account key file. Please try again.');
+        updateGCPConfig('serviceAccountKeyJson', '');
+        updateGCPConfig('serviceAccountKeyName', '');
+      };
       reader.readAsText(file);
     } else {
         updateGCPConfig('serviceAccountKeyJson', '');

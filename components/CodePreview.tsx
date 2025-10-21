@@ -40,12 +40,18 @@ export const CodePreview: React.FC<CodePreviewProps> = ({ code }) => {
     );
   }
 
-  const handleCopy = (filename: string) => {
-    navigator.clipboard.writeText(code[filename]);
-    setCopiedStates({ ...copiedStates, [filename]: true });
-    setTimeout(() => {
+  const handleCopy = async (filename: string) => {
+    try {
+      await navigator.clipboard.writeText(code[filename]);
+      setCopiedStates({ ...copiedStates, [filename]: true });
+      setTimeout(() => {
         setCopiedStates(prev => ({...prev, [filename]: false}));
-    }, 2000);
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      // Fallback: show error state briefly
+      alert('Failed to copy to clipboard. Please try selecting and copying manually.');
+    }
   };
 
   const tabs = Object.keys(code);
