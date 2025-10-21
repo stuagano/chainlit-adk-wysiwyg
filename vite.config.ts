@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { defineConfig, loadEnv, type PluginOption } from 'vite';
+import { defineConfig, type PluginOption } from 'vite';
 import { configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
@@ -153,7 +153,8 @@ const chainlitSyncEndpoint = () => ({
 });
 
 export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
+    // Note: Environment variables are available to the Vite dev server but NOT exposed to the client
+    // API keys and secrets should never be injected into the client bundle
     const plugins: PluginOption[] = [react()];
     if (mode === 'development') {
       plugins.push(chainlitSyncEndpoint());
@@ -165,10 +166,8 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
       },
       plugins,
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
+      // SECURITY: Do NOT use define{} to expose API keys or secrets to the client
+      // API keys are only used in generated Python code, not in the frontend
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
