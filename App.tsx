@@ -182,17 +182,65 @@ const App: React.FC = () => {
   const handleSAKeyFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file type
+      if (!file.type.includes('json') && !file.name.endsWith('.json')) {
+        alert('Invalid file type. Please upload a JSON file.');
+        e.target.value = ''; // Clear the input
+        return;
+      }
+
+      // Validate file size (max 100KB for service account key)
+      const MAX_FILE_SIZE = 100 * 1024; // 100KB
+      if (file.size > MAX_FILE_SIZE) {
+        alert('File is too large. Service account key files should be under 100KB.');
+        e.target.value = ''; // Clear the input
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
-        const content = event.target?.result as string;
-        updateGCPConfig('serviceAccountKeyJson', content);
-        updateGCPConfig('serviceAccountKeyName', file.name);
+        try {
+          const content = event.target?.result as string;
+
+          // Validate JSON structure
+          const parsed = JSON.parse(content);
+
+          // Validate it looks like a GCP service account key
+          if (parsed.type !== 'service_account') {
+            alert('Invalid GCP service account key. The file must contain a service account key with type "service_account".');
+            updateGCPConfig('serviceAccountKeyJson', '');
+            updateGCPConfig('serviceAccountKeyName', '');
+            e.target.value = ''; // Clear the input
+            return;
+          }
+
+          // Additional validation for required fields
+          const requiredFields = ['project_id', 'private_key_id', 'private_key', 'client_email'];
+          const missingFields = requiredFields.filter(field => !parsed[field]);
+          if (missingFields.length > 0) {
+            alert(`Invalid GCP service account key. Missing required fields: ${missingFields.join(', ')}`);
+            updateGCPConfig('serviceAccountKeyJson', '');
+            updateGCPConfig('serviceAccountKeyName', '');
+            e.target.value = ''; // Clear the input
+            return;
+          }
+
+          updateGCPConfig('serviceAccountKeyJson', content);
+          updateGCPConfig('serviceAccountKeyName', file.name);
+        } catch (error) {
+          console.error('Failed to parse JSON:', error);
+          alert('Invalid JSON file. Please upload a valid GCP service account key.');
+          updateGCPConfig('serviceAccountKeyJson', '');
+          updateGCPConfig('serviceAccountKeyName', '');
+          e.target.value = ''; // Clear the input
+        }
       };
       reader.onerror = (error) => {
         console.error('Failed to read file:', error);
         alert('Failed to read the service account key file. Please try again.');
         updateGCPConfig('serviceAccountKeyJson', '');
         updateGCPConfig('serviceAccountKeyName', '');
+        e.target.value = ''; // Clear the input
       };
       reader.readAsText(file);
     } else {
