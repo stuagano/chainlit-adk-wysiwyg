@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { WorkflowDesigner } from '../components/WorkflowDesigner';
-import { Agent, WorkflowType } from '../types';
+import { Agent } from '../types';
 
 describe('WorkflowDesigner Component', () => {
   let mockAgents: Agent[];
@@ -47,7 +47,7 @@ describe('WorkflowDesigner Component', () => {
         <WorkflowDesigner
           agents={mockAgents}
           setAgents={mockSetAgents}
-          selectedAgentId={mockAgents[0].id}
+          selectedAgentId={mockAgents[0]!.id}
           setSelectedAgentId={mockSetSelectedAgentId}
           workflowType="Sequential"
           setWorkflowType={mockSetWorkflowType}
@@ -175,9 +175,9 @@ describe('WorkflowDesigner Component', () => {
     });
 
     it('flattens agent structure when switching from Hierarchical to Sequential', () => {
-      const hierarchicalAgents = [
-        { ...mockAgents[0], parentId: null },
-        { ...mockAgents[1], parentId: '1' }, // Child of Agent 1
+      const hierarchicalAgents: Agent[] = [
+        { ...mockAgents[0]!, parentId: null },
+        { ...mockAgents[1]!, parentId: '1' }, // Child of Agent 1
       ];
 
       render(
@@ -195,7 +195,7 @@ describe('WorkflowDesigner Component', () => {
       fireEvent.click(sequentialButton);
 
       expect(mockSetAgents).toHaveBeenCalled();
-      const setAgentsCall = mockSetAgents.mock.calls[0][0];
+      const setAgentsCall = mockSetAgents.mock.calls[0]![0];
       const newAgents = typeof setAgentsCall === 'function'
         ? setAgentsCall(hierarchicalAgents)
         : setAgentsCall;
@@ -205,9 +205,9 @@ describe('WorkflowDesigner Component', () => {
     });
 
     it('flattens agent structure when switching from Hierarchical to Collaborative', () => {
-      const hierarchicalAgents = [
-        { ...mockAgents[0], parentId: null },
-        { ...mockAgents[1], parentId: '1' },
+      const hierarchicalAgents: Agent[] = [
+        { ...mockAgents[0]!, parentId: null },
+        { ...mockAgents[1]!, parentId: '1' },
       ];
 
       render(
@@ -225,7 +225,7 @@ describe('WorkflowDesigner Component', () => {
       fireEvent.click(collaborativeButton);
 
       expect(mockSetAgents).toHaveBeenCalled();
-      const setAgentsCall = mockSetAgents.mock.calls[0][0];
+      const setAgentsCall = mockSetAgents.mock.calls[0]![0];
       const newAgents = typeof setAgentsCall === 'function'
         ? setAgentsCall(hierarchicalAgents)
         : setAgentsCall;
@@ -306,7 +306,7 @@ describe('WorkflowDesigner Component', () => {
       const addButton = screen.getByText(/Add Agent/i);
       fireEvent.click(addButton);
 
-      const setAgentsCall = mockSetAgents.mock.calls[0][0];
+      const setAgentsCall = mockSetAgents.mock.calls[0]![0];
       const newAgents = typeof setAgentsCall === 'function'
         ? setAgentsCall(mockAgents)
         : setAgentsCall;
@@ -354,9 +354,9 @@ describe('WorkflowDesigner Component', () => {
     it('hides delete button when only one agent exists', () => {
       render(
         <WorkflowDesigner
-          agents={[mockAgents[0]]}
+          agents={[mockAgents[0]!]}
           setAgents={mockSetAgents}
-          selectedAgentId={mockAgents[0].id}
+          selectedAgentId={mockAgents[0]!.id}
           setSelectedAgentId={mockSetSelectedAgentId}
           workflowType="Sequential"
           setWorkflowType={mockSetWorkflowType}
@@ -380,7 +380,7 @@ describe('WorkflowDesigner Component', () => {
       );
 
       const deleteButtons = screen.getAllByLabelText(/Remove/i);
-      fireEvent.click(deleteButtons[0]);
+      fireEvent.click(deleteButtons[0]!);
 
       expect(mockSetAgents).toHaveBeenCalled();
     });
@@ -398,9 +398,9 @@ describe('WorkflowDesigner Component', () => {
       );
 
       const deleteButtons = screen.getAllByLabelText(/Remove/i);
-      fireEvent.click(deleteButtons[0]);
+      fireEvent.click(deleteButtons[0]!);
 
-      const setAgentsCall = mockSetAgents.mock.calls[0][0];
+      const setAgentsCall = mockSetAgents.mock.calls[0]![0];
       const newAgents = typeof setAgentsCall === 'function'
         ? setAgentsCall(mockAgents)
         : setAgentsCall;
@@ -441,10 +441,10 @@ describe('WorkflowDesigner Component', () => {
       );
 
       const subordinateButtons = screen.getAllByLabelText(/Add subordinate/i);
-      fireEvent.click(subordinateButtons[0]);
+      fireEvent.click(subordinateButtons[0]!);
 
       expect(mockSetAgents).toHaveBeenCalled();
-      const setAgentsCall = mockSetAgents.mock.calls[0][0];
+      const setAgentsCall = mockSetAgents.mock.calls[0]![0];
       const newAgents = typeof setAgentsCall === 'function'
         ? setAgentsCall(mockAgents)
         : setAgentsCall;
@@ -466,9 +466,9 @@ describe('WorkflowDesigner Component', () => {
       );
 
       const subordinateButtons = screen.getAllByLabelText(/Add subordinate/i);
-      fireEvent.click(subordinateButtons[0]); // Add subordinate to first agent
+      fireEvent.click(subordinateButtons[0]!); // Add subordinate to first agent
 
-      const setAgentsCall = mockSetAgents.mock.calls[0][0];
+      const setAgentsCall = mockSetAgents.mock.calls[0]![0];
       const newAgents = typeof setAgentsCall === 'function'
         ? setAgentsCall(mockAgents)
         : setAgentsCall;

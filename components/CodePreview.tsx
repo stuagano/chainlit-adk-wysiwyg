@@ -25,7 +25,10 @@ export const CodePreview: React.FC<CodePreviewProps> = ({ code }) => {
 
   useEffect(() => {
     if (code && Object.keys(code).length > 0 && !activeTab) {
-      setActiveTab(Object.keys(code)[0]);
+      const firstKey = Object.keys(code)[0];
+      if (firstKey !== undefined) {
+        setActiveTab(firstKey);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]); // Only run when code changes, not when activeTab changes
@@ -43,11 +46,14 @@ export const CodePreview: React.FC<CodePreviewProps> = ({ code }) => {
 
   const handleCopy = async (filename: string) => {
     try {
-      await navigator.clipboard.writeText(code[filename]);
-      setCopiedStates({ ...copiedStates, [filename]: true });
-      setTimeout(() => {
-        setCopiedStates(prev => ({...prev, [filename]: false}));
-      }, 2000);
+      const content = code[filename];
+      if (content !== undefined) {
+        await navigator.clipboard.writeText(content);
+        setCopiedStates({ ...copiedStates, [filename]: true });
+        setTimeout(() => {
+          setCopiedStates(prev => ({...prev, [filename]: false}));
+        }, 2000);
+      }
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
       // Fallback: show error state briefly

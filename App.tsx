@@ -150,7 +150,10 @@ const App: React.FC = () => {
 
     const zip = new JSZip();
     Object.keys(generatedCode).forEach(filename => {
-        zip.file(filename, generatedCode[filename]);
+        const content = generatedCode[filename];
+        if (content !== undefined) {
+          zip.file(filename, content);
+        }
     });
 
     zip.generateAsync({ type: 'blob' })
@@ -259,7 +262,10 @@ const App: React.FC = () => {
   const resetForm = () => {
     const newInitialState = initialAgentsState.map(a => ({...a, id: crypto.randomUUID(), parentId: null}));
     setAgents(newInitialState);
-    setSelectedAgentId(newInitialState[0].id);
+    const firstAgent = newInitialState[0];
+    if (firstAgent) {
+      setSelectedAgentId(firstAgent.id);
+    }
     setGcpConfig(initialGCPState);
     setValidationErrors({ tools: {} });
     setPreflightResult(null);

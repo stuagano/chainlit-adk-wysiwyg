@@ -228,8 +228,8 @@ describe('codeGenerator - Core Functionality', () => {
       const files = generateCode([agent1, agent2], {} as GCPConfig, 'Sequential');
 
       // Count occurrences of "def shared_tool" - should appear only once
-      const matches = files['tools.py'].match(/def shared_tool/g);
-      expect(matches?.length).toBe(1);
+      const matches = files['tools.py']!.match(/def shared_tool/g);
+      expect(matches!.length).toBe(1);
     });
   });
 

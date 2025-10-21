@@ -29,8 +29,8 @@ describe('PreflightPanel Component', () => {
       hasErrors: true,
       hasWarnings: false,
       errors: [
-        { message: 'Test error 1', path: 'agent1.tools[0]' },
-        { message: 'Test error 2', path: 'agent2.name' },
+        { severity: 'error', message: 'Test error 1', path: 'agent1.tools[0]' },
+        { severity: 'error', message: 'Test error 2', path: 'agent2.name' },
       ],
       warnings: [],
     };
@@ -50,7 +50,7 @@ describe('PreflightPanel Component', () => {
       hasWarnings: true,
       errors: [],
       warnings: [
-        { message: 'Test warning 1', path: 'agent1.temperature' },
+        { severity: 'warning', message: 'Test warning 1', path: 'agent1.temperature' },
       ],
     };
 
@@ -64,7 +64,7 @@ describe('PreflightPanel Component', () => {
     const result: PreflightValidationResult = {
       hasErrors: true,
       hasWarnings: false,
-      errors: [{ message: 'Error', path: '' }],
+      errors: [{ severity: 'error', message: 'Error', path: '' }],
       warnings: [],
     };
 
@@ -78,7 +78,7 @@ describe('PreflightPanel Component', () => {
       hasErrors: false,
       hasWarnings: true,
       errors: [],
-      warnings: [{ message: 'Warning', path: '' }],
+      warnings: [{ severity: 'warning', message: 'Warning', path: '' }],
     };
 
     render(<PreflightPanel result={result} />);
@@ -91,8 +91,8 @@ describe('PreflightPanel Component', () => {
       hasErrors: true,
       hasWarnings: false,
       errors: [
-        { message: 'Error 1', path: '' },
-        { message: 'Error 2', path: '' },
+        { severity: 'error', message: 'Error 1', path: '' },
+        { severity: 'error', message: 'Error 2', path: '' },
       ],
       warnings: [],
     };
@@ -106,7 +106,7 @@ describe('PreflightPanel Component', () => {
     const result: PreflightValidationResult = {
       hasErrors: true,
       hasWarnings: false,
-      errors: [{ message: 'Error', path: '' }],
+      errors: [{ severity: 'error', message: 'Error', path: '' }],
       warnings: [],
     };
 
@@ -121,8 +121,8 @@ describe('PreflightPanel Component', () => {
       hasWarnings: true,
       errors: [],
       warnings: [
-        { message: 'Warning 1', path: '' },
-        { message: 'Warning 2', path: '' },
+        { severity: 'warning', message: 'Warning 1', path: '' },
+        { severity: 'warning', message: 'Warning 2', path: '' },
       ],
     };
 
@@ -135,8 +135,8 @@ describe('PreflightPanel Component', () => {
     const result: PreflightValidationResult = {
       hasErrors: true,
       hasWarnings: true,
-      errors: [{ message: 'Error', path: '' }],
-      warnings: [{ message: 'Warning', path: '' }],
+      errors: [{ severity: 'error', message: 'Error', path: '' }],
+      warnings: [{ severity: 'warning', message: 'Warning', path: '' }],
     };
 
     render(<PreflightPanel result={result} />);
@@ -149,7 +149,7 @@ describe('PreflightPanel Component', () => {
     const result: PreflightValidationResult = {
       hasErrors: true,
       hasWarnings: false,
-      errors: [{ message: 'Error without path', path: undefined }],
+      errors: [{ severity: 'error', message: 'Error without path', path: undefined }],
       warnings: [],
     };
 

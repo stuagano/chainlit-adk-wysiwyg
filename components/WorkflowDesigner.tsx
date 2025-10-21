@@ -90,13 +90,15 @@ const SequentialView: React.FC<SharedViewProps> = ({ agents, setAgents, selected
     const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetAgentId: string) => {
         e.preventDefault();
         if (!draggedAgentId || draggedAgentId === targetAgentId) return setDraggedAgentId(null);
-        
+
         const draggedIndex = agents.findIndex(a => a.id === draggedAgentId);
         const targetIndex = agents.findIndex(a => a.id === targetAgentId);
         const newAgents = [...agents];
         const [draggedItem] = newAgents.splice(draggedIndex, 1);
-        newAgents.splice(targetIndex, 0, draggedItem);
-        setAgents(newAgents);
+        if (draggedItem) {
+          newAgents.splice(targetIndex, 0, draggedItem);
+          setAgents(newAgents);
+        }
         setDraggedAgentId(null);
     };
     
@@ -148,10 +150,16 @@ const HierarchicalView: React.FC<SharedViewProps> = ({ agents, setAgents, select
         agents.forEach(agent => agentMap[agent.id] = {...agent, children: []});
         const tree: AgentNode[] = [];
         agents.forEach(agent => {
+            const currentNode = agentMap[agent.id];
+            if (!currentNode) return;
+
             if (agent.parentId && agentMap[agent.parentId]) {
-                agentMap[agent.parentId].children.push(agentMap[agent.id]);
+                const parentNode = agentMap[agent.parentId];
+                if (parentNode) {
+                  parentNode.children.push(currentNode);
+                }
             } else {
-                tree.push(agentMap[agent.id]);
+                tree.push(currentNode);
             }
         });
         return tree;

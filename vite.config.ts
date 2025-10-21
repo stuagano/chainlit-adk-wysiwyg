@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { defineConfig, type PluginOption } from 'vite';
+import { defineConfig, type PluginOption, type ViteDevServer } from 'vite';
 import { configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
@@ -19,7 +19,7 @@ const __dirname = path.dirname(__filename);
 
 const chainlitSyncEndpoint = () => ({
   name: 'chainlit-sync-endpoint',
-  configureServer(server) {
+  configureServer(server: ViteDevServer) {
     server.middlewares.use('/api/sync-chainlit', async (req: IncomingMessage, res: ServerResponse) => {
       if (req.method !== 'POST') {
         res.statusCode = 405;
@@ -74,7 +74,7 @@ const chainlitSyncEndpoint = () => ({
         );
 
         const pythonTargets = ['main.py', 'tools.py']
-          .map((name) => (files[name] ? path.join(tempDir, name) : null))
+          .map((name) => (files[name] && tempDir ? path.join(tempDir, name) : null))
           .filter((target): target is string => Boolean(target));
 
         if (pythonTargets.length > 0) {

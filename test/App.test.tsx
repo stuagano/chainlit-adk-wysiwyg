@@ -55,7 +55,7 @@ describe('App Component', () => {
       onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
       onerror: ((event: ProgressEvent<FileReader>) => void) | null = null;
 
-      readAsText(file: Blob) {
+      readAsText(_file: Blob) {
         setTimeout(() => {
           if (this.onload) {
             const mockEvent = {
