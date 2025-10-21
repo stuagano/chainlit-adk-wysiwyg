@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Agent, Tool, ValidationErrors, GCPConfig as GCPConfigType, WorkflowType } from './types';
+import { Agent, Tool, ValidationErrors, GCPConfig as GCPConfigType, WorkflowType, PreflightValidationResult } from './types';
 import { generateCode } from './services/codeGenerator';
+import { runPreflightValidation } from './services/preflight';
 import { AgentConfig } from './components/AgentConfig';
 import { ToolsConfig } from './components/ToolsConfig';
 import { ChainlitConfig } from './components/ChainlitConfig';
 import { CodePreview } from './components/CodePreview';
+import { PreflightPanel } from './components/PreflightPanel';
 import { initialAgentsState, initialGCPState } from './constants';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -27,6 +29,7 @@ const App: React.FC = () => {
   const [gcpConfig, setGcpConfig] = useState<GCPConfigType>(initialGCPState);
   const [generatedCode, setGeneratedCode] = useState<Record<string, string> | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({ tools: {} });
+  const [preflightResult, setPreflightResult] = useState<PreflightValidationResult | null>(null);
   const [chainlitSyncStatus, setChainlitSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   const [chainlitSyncMessage, setChainlitSyncMessage] = useState('');
 
@@ -71,12 +74,21 @@ const App: React.FC = () => {
   };
 
   const handleGenerateCode = useCallback(() => {
-    const { isValid, errors } = validateAgents(agents);
+    const { isValid: legacyValid, errors } = validateAgents(agents);
     setValidationErrors(errors);
+
+    const result = runPreflightValidation({ agents });
+    setPreflightResult(result);
+
     setChainlitSyncStatus('idle');
     setChainlitSyncMessage('');
 
-    if (isValid) {
+    if (result.hasErrors) {
+      setGeneratedCode(null);
+      return;
+    }
+
+    if (legacyValid) {
       const code = generateCode(agents, gcpConfig, workflowType);
       setGeneratedCode(code);
     } else {
@@ -85,6 +97,15 @@ const App: React.FC = () => {
   }, [agents, gcpConfig, workflowType]);
 
   const handleSyncChainlit = useCallback(async () => {
+    const latestPreflight = runPreflightValidation({ agents });
+    setPreflightResult(latestPreflight);
+
+    if (latestPreflight.hasErrors) {
+      setChainlitSyncStatus('error');
+      setChainlitSyncMessage('Cannot sync: fix validation errors first.');
+      return;
+    }
+
     if (!generatedCode) {
       setChainlitSyncStatus('error');
       setChainlitSyncMessage('Generate code before syncing to Chainlit.');
@@ -115,7 +136,7 @@ const App: React.FC = () => {
       setChainlitSyncStatus('error');
       setChainlitSyncMessage(error instanceof Error ? error.message : 'Failed to sync Chainlit files');
     }
-  }, [generatedCode]);
+  }, [agents, generatedCode]);
 
   const handleDownloadCode = () => {
     if (!generatedCode) return;
@@ -175,8 +196,11 @@ const App: React.FC = () => {
     setSelectedAgentId(newInitialState[0].id);
     setGcpConfig(initialGCPState);
     setValidationErrors({ tools: {} });
+    setPreflightResult(null);
     setGeneratedCode(null);
     setWorkflowType('Sequential');
+    setChainlitSyncStatus('idle');
+    setChainlitSyncMessage('');
   }
 
   return (
@@ -218,6 +242,7 @@ const App: React.FC = () => {
 
         <div className="flex flex-col gap-6 sticky top-8">
             <h2 className="text-2xl font-bold text-slate-200 border-b border-slate-700 pb-2">Actions & Preview</h2>
+            <PreflightPanel result={preflightResult} />
              <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-center">
                 <button
                 onClick={handleGenerateCode}
@@ -233,9 +258,9 @@ const App: React.FC = () => {
                     <DownloadIcon />
                     Download .zip
                 </button>
-                 <button
-                    onClick={handleSyncChainlit}
-                    disabled={!generatedCode || chainlitSyncStatus === 'syncing'}
+                <button
+                   onClick={handleSyncChainlit}
+                    disabled={!generatedCode || chainlitSyncStatus === 'syncing' || (preflightResult?.hasErrors ?? false)}
                     className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold py-3 px-4 rounded-lg shadow-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-amber-300 disabled:bg-slate-600 disabled:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60 disabled:transform-none disabled:shadow-none"
                     >
                     {chainlitSyncStatus === 'syncing' ? 'Syncing…' : 'Sync to Chainlit'}

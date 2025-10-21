@@ -49,3 +49,18 @@ export interface ToolValidationError {
 export interface ValidationErrors {
   tools: Record<string, ToolValidationError>;
 }
+
+export type ValidationSeverity = 'error' | 'warning';
+
+export interface ValidationIssue {
+  severity: ValidationSeverity;
+  message: string;
+  path?: string;
+}
+
+export interface PreflightValidationResult {
+  errors: ValidationIssue[];
+  warnings: ValidationIssue[];
+  hasErrors: boolean;
+  hasWarnings: boolean;
+}
