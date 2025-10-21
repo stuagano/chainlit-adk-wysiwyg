@@ -9,6 +9,8 @@ import { defineConfig, loadEnv, type PluginOption } from 'vite';
 import { configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
+import { ensureChainlitRunning } from './services/chainlitProcess';
+
 const execFileAsync = promisify(execFile);
 
 const __filename = fileURLToPath(import.meta.url);
@@ -110,6 +112,27 @@ const chainlitSyncEndpoint = () => ({
             console.error('[chainlit-sync-endpoint] temp cleanup failed', cleanupError);
           }
         }
+      }
+    });
+
+    server.middlewares.use('/api/launch-chainlit', async (req: IncomingMessage, res: ServerResponse) => {
+      if (req.method !== 'POST') {
+        res.statusCode = 405;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Method not allowed' }));
+        return;
+      }
+
+      try {
+        await ensureChainlitRunning();
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ ok: true }));
+      } catch (error) {
+        console.error('[chainlit-launch-endpoint]', error);
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Failed to launch Chainlit' }));
       }
     });
   },

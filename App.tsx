@@ -129,8 +129,17 @@ const App: React.FC = () => {
         throw new Error(data.error || 'Failed to sync Chainlit files');
       }
 
+      const launchResponse = await fetch('/api/launch-chainlit', { method: 'POST' });
+
+      if (!launchResponse.ok) {
+        const data = await launchResponse.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(data.error || 'Failed to launch Chainlit preview');
+      }
+
+      window.open('http://localhost:8000', '_blank');
+
       setChainlitSyncStatus('success');
-      setChainlitSyncMessage('Synced to chainlit_app/. Run `npm run chainlit:dev` to preview.');
+      setChainlitSyncMessage('Synced to chainlit_app/. Chainlit preview opened in new tab.');
     } catch (error) {
       console.error(error);
       setChainlitSyncStatus('error');
