@@ -1,6 +1,19 @@
+/**
+ * Preflight Validation Service
+ *
+ * Validates agent configurations before code generation to ensure:
+ * - Valid Python identifiers for names
+ * - No duplicate agent/tool names
+ * - Supported LLM models
+ * - Required fields are present
+ */
+
 import { Agent, Tool, ValidationIssue, PreflightValidationResult } from '../types';
 
+/** Regular expression for valid Python identifiers */
 const PYTHON_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/** Python language keywords that cannot be used as identifiers */
 const PYTHON_KEYWORDS = new Set([
   'False', 'await', 'else', 'import', 'pass', 'None', 'break', 'except', 'in', 'raise',
   'True', 'class', 'finally', 'is', 'return', 'and', 'continue', 'for', 'lambda', 'try',
@@ -8,6 +21,7 @@ const PYTHON_KEYWORDS = new Set([
   'async', 'elif', 'if', 'or', 'yield',
 ]);
 
+/** Supported LLM models for code generation */
 const ALLOWED_LLM_MODELS = new Set([
   'gemini-2.5-flash',
   'gemini-1.5-flash',
@@ -19,10 +33,20 @@ interface PreflightInput {
   agents: Agent[];
 }
 
+/**
+ * Checks if a string is a valid Python identifier
+ * @param value - The string to check
+ * @returns True if valid Python identifier, false otherwise
+ */
 function isPythonIdentifier(value: string) {
   return PYTHON_IDENTIFIER.test(value) && !PYTHON_KEYWORDS.has(value);
 }
 
+/**
+ * Converts a string to snake_case format
+ * @param str - The string to convert
+ * @returns Snake case formatted string
+ */
 function toSnakeCase(str: string) {
   return str
     .trim()
@@ -111,6 +135,25 @@ function validateTool(tool: Tool, agentIndex: number, seen: Set<string>) {
   return issues;
 }
 
+/**
+ * Runs preflight validation on agent configurations
+ *
+ * Validates:
+ * - At least one agent exists
+ * - Agent names are unique and non-empty
+ * - LLM models are supported
+ * - Tool names are valid Python identifiers and unique
+ * - Parameter names are valid Python identifiers
+ *
+ * @param input - Object containing agents array to validate
+ * @returns Validation result with errors and warnings
+ *
+ * @example
+ * const result = runPreflightValidation({ agents: [myAgent] });
+ * if (result.hasErrors) {
+ *   console.error('Validation failed:', result.errors);
+ * }
+ */
 export function runPreflightValidation({ agents }: PreflightInput): PreflightValidationResult {
   const issues: ValidationIssue[] = [];
 

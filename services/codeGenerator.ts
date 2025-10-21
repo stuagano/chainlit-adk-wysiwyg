@@ -1,5 +1,17 @@
+/**
+ * Code Generation Service
+ *
+ * Generates Python code for multi-agent workflows using the ADK and Chainlit frameworks.
+ * Supports multiple workflow types: Sequential, Hierarchical, and Collaborative.
+ */
+
 import { Agent, Tool, Parameter, GCPConfig, WorkflowType } from '../types';
 
+/**
+ * Converts a string to snake_case format for Python identifiers
+ * @param str - The string to convert
+ * @returns Snake case formatted string safe for Python variable names
+ */
 const toSnakeCase = (str: string) => {
     // Sanitize the name to be a valid Python identifier
     return str
@@ -9,15 +21,29 @@ const toSnakeCase = (str: string) => {
         .replace(/^(\d)/, '_$1');    // Prepend underscore if it starts with a number
 };
 
+/**
+ * Converts a string to kebab-case format
+ * @param str - The string to convert
+ * @returns Kebab case formatted string
+ */
 const toKebabCase = (str: string) => {
     return str.replace(/[\s_]+/g, '-').replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`).replace(/^-/, '').toLowerCase();
 };
 
+/**
+ * Converts a string to PascalCase format
+ * @param str - The string to convert
+ * @returns PascalCase formatted string for Python class names
+ */
 const toPascalCase = (str: string) => {
     return str.replace(/(?:^|[^a-zA-Z0-9])([a-zA-Z0-9])/g, (g) => g.toUpperCase().replace(/[^a-zA-Z0-9]/g, ''));
 }
 
-
+/**
+ * Maps TypeScript parameter types to Python types
+ * @param type - The parameter type from the UI
+ * @returns The corresponding Python type annotation
+ */
 const getPythonType = (type: Parameter['type']): string => {
     switch (type) {
         case 'number': return 'float';
@@ -623,6 +649,31 @@ gcp-credentials.json
 `;
 };
 
+/**
+ * Generates a complete multi-agent workflow codebase
+ *
+ * Creates all necessary Python files for a Chainlit + ADK application including:
+ * - main.py: Agent configuration and Chainlit UI setup
+ * - tools.py: Tool definitions with Pydantic models
+ * - requirements.txt: Python dependencies
+ * - README.md: Setup and deployment instructions
+ * - Dockerfile: Container configuration
+ * - .gcloudignore: GCP deployment exclusions
+ * - (Optional) cloudbuild.yaml and deploy.sh for GCP deployment
+ *
+ * @param agents - Array of agent configurations
+ * @param gcpConfig - GCP deployment configuration (project ID, service name, etc.)
+ * @param workflowType - Workflow architecture type (Sequential, Hierarchical, or Collaborative)
+ * @returns Object mapping filenames to their generated content
+ *
+ * @example
+ * const files = generateCode(
+ *   [{ name: 'Assistant', llmModel: 'gemini-1.5-flash', ... }],
+ *   { projectId: 'my-project' },
+ *   'Sequential'
+ * );
+ * // files = { 'main.py': '...', 'tools.py': '...', ... }
+ */
 export const generateCode = (agents: Agent[], gcpConfig: GCPConfig, workflowType: WorkflowType): Record<string, string> => {
     const allTools = agents.flatMap(agent => agent.tools);
 
