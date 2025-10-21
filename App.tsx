@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import JSZip from 'jszip';
 import { Agent, Tool, ValidationErrors, GCPConfig as GCPConfigType, WorkflowType, PreflightValidationResult } from './types';
 import { generateCode } from './services/codeGenerator';
 import { runPreflightValidation } from './services/preflight';
@@ -12,9 +13,6 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { GCPConfig } from './components/GCPConfig';
 import { WorkflowDesigner } from './components/WorkflowDesigner';
-
-// Inform TypeScript that JSZip is available globally from the script tag in index.html
-declare var JSZip: any;
 
 const DownloadIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -155,7 +153,8 @@ const App: React.FC = () => {
         zip.file(filename, generatedCode[filename]);
     });
 
-    zip.generateAsync({ type: 'blob' }).then((content: Blob) => {
+    zip.generateAsync({ type: 'blob' })
+      .then((content: Blob) => {
         const link = document.createElement('a');
         link.href = URL.createObjectURL(content);
         link.download = `multi-agent-workflow.zip`;
@@ -163,7 +162,11 @@ const App: React.FC = () => {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
-    });
+      })
+      .catch((error) => {
+        console.error('Failed to generate ZIP file:', error);
+        alert('Failed to create download file. Please try again.');
+      });
   };
 
   const updateAgent = (agentId: string, update: Partial<Agent>) => {
