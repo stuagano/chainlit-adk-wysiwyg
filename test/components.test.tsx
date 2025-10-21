@@ -1,9 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { PreflightPanel } from '../components/PreflightPanel';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
+import { CodePreview } from '../components/CodePreview';
 import { PreflightValidationResult } from '../types';
 
 describe('PreflightPanel Component', () => {
@@ -195,5 +196,82 @@ describe('Footer Component', () => {
     // Most footers have some copyright or year
     const footer = screen.getByRole('contentinfo');
     expect(footer.textContent).toBeTruthy();
+  });
+});
+
+describe('CodePreview Component', () => {
+  const mockCode = {
+    'main.py': 'print("Hello World")',
+    'tools.py': '# Tools file',
+    'requirements.txt': 'chainlit\nrequests',
+  };
+
+  beforeEach(() => {
+    // Mock clipboard API
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
+  });
+
+  it('renders placeholder when no code is provided', () => {
+    render(<CodePreview code={null} />);
+    expect(screen.getByText(/Click the "Generate & Preview Code" button/i)).toBeInTheDocument();
+  });
+
+  it('renders tabs for each file', () => {
+    render(<CodePreview code={mockCode} />);
+    expect(screen.getByText('main.py')).toBeInTheDocument();
+    expect(screen.getByText('tools.py')).toBeInTheDocument();
+    expect(screen.getByText('requirements.txt')).toBeInTheDocument();
+  });
+
+  it('displays first file by default', () => {
+    render(<CodePreview code={mockCode} />);
+    expect(screen.getByText('print("Hello World")')).toBeInTheDocument();
+  });
+
+  it('switches tabs when clicking different file', () => {
+    render(<CodePreview code={mockCode} />);
+
+    const toolsTab = screen.getByText('tools.py');
+    fireEvent.click(toolsTab);
+
+    expect(screen.getByText('# Tools file')).toBeInTheDocument();
+  });
+
+  it('shows copy button for active tab', () => {
+    render(<CodePreview code={mockCode} />);
+    expect(screen.getByText(/Copy/i)).toBeInTheDocument();
+  });
+
+  it('copies code to clipboard when copy button is clicked', async () => {
+    render(<CodePreview code={mockCode} />);
+
+    const copyButton = screen.getByText(/Copy/i);
+    fireEvent.click(copyButton);
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('print("Hello World")');
+    });
+  });
+
+  it('shows "Copied!" after successful copy', async () => {
+    render(<CodePreview code={mockCode} />);
+
+    const copyButton = screen.getByText(/Copy/i);
+    fireEvent.click(copyButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Copied!')).toBeInTheDocument();
+    });
+  });
+
+  it('highlights active tab', () => {
+    render(<CodePreview code={mockCode} />);
+
+    const mainTab = screen.getByText('main.py');
+    expect(mainTab).toHaveClass('bg-emerald-600');
   });
 });
