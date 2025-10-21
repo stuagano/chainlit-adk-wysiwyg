@@ -441,7 +441,7 @@ const generateRequirementsTxt = (agents: Agent[], gcpConfig: GCPConfig): string 
 };
 
 const generateReadme = (agents: Agent[], gcpConfig: GCPConfig, workflowType: WorkflowType): string => {
-    const hasGcpConfig = gcpConfig.projectId && gcpConfig.serviceAccountKeyJson;
+    const hasGcpConfig = gcpConfig.projectId;
     const deploymentSection = hasGcpConfig ? `
 ## ☁️ Deploy to GCP Agent Engine
 
@@ -535,8 +535,16 @@ The local setup allows you to test your agent's logic and Chainlit UI before dep
     OPENAI_API_KEY="your-openai-api-key-here"
 
     # For Google (Vertex AI) Models & Memory Bank
-    # This file should contain your GCP service account key
-    GOOGLE_APPLICATION_CREDENTIALS="./gcp-credentials.json"
+    # IMPORTANT: Store your GCP service account key file securely outside this directory
+    # Download your key from: https://console.cloud.google.com/iam-admin/serviceaccounts
+    # Then set the path to it (use absolute path for security):
+    GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/service-account-key.json"
+
+    # SECURITY WARNING:
+    # - NEVER commit service account keys to git
+    # - NEVER include credentials in your codebase
+    # - Use GCP Secret Manager for production deployments
+    # - The .gitignore file already excludes gcp-credentials.json
     \`\`\`
 
 3.  **Run the Chainlit App:**
@@ -628,10 +636,10 @@ export const generateCode = (agents: Agent[], gcpConfig: GCPConfig, workflowType
         files['cloudbuild.yaml'] = generateCloudBuildYaml(gcpConfig);
         files['deploy.sh'] = generateDeploySh(gcpConfig);
     }
-    
-    if (gcpConfig.serviceAccountKeyJson) {
-        files['gcp-credentials.json'] = gcpConfig.serviceAccountKeyJson;
-    }
+
+    // SECURITY: Never include credentials in generated files
+    // Users must download their service account key separately and set GOOGLE_APPLICATION_CREDENTIALS
+    // See README.md for instructions
 
     return files;
 };
