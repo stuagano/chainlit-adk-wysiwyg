@@ -232,6 +232,7 @@ const generateMainPy = (agents: Agent[], gcpConfig: GCPConfig, workflowType: Wor
     const usesVertex = allModels.some(model => model.startsWith('gemini'));
 
     let imports = `import chainlit as cl
+import logging
 import os
 from adk.agent import Agent
 from adk.workflow import ${toPascalCase(workflowType)}
@@ -359,6 +360,8 @@ import tools as agent_tools
 # It is recommended to use environment variables for api keys
 # from dotenv import load_dotenv
 # load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
 
 ${envChecks.join('\n\n')}
 ${agentCreationFunctions}
