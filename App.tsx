@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import JSZip from 'jszip';
 import { Agent, Tool, ValidationErrors, GCPConfig as GCPConfigType, WorkflowType, PreflightValidationResult } from './types';
 import { generateCode } from './services/codeGenerator';
 import { runPreflightValidation } from './services/preflight';
+import { loadState, saveState, clearState, getAutoSaveEnabled, setAutoSaveEnabled, getLastSaveTime } from './services/storage';
 import { AgentConfig } from './components/AgentConfig';
 import { ToolsConfig } from './components/ToolsConfig';
 import { ChainlitConfig } from './components/ChainlitConfig';
@@ -30,8 +31,56 @@ const App: React.FC = () => {
   const [preflightResult, setPreflightResult] = useState<PreflightValidationResult | null>(null);
   const [chainlitSyncStatus, setChainlitSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   const [chainlitSyncMessage, setChainlitSyncMessage] = useState('');
+  const [autoSave, setAutoSave] = useState<boolean>(getAutoSaveEnabled());
+  const [lastSaved, setLastSaved] = useState<Date | null>(getLastSaveTime());
+
+  // Use ref to track if we've loaded initial state to avoid auto-save on mount
+  const hasLoadedInitialState = useRef(false);
 
   const selectedAgent = useMemo(() => agents.find(a => a.id === selectedAgentId), [agents, selectedAgentId]);
+
+  // Load saved state on mount
+  useEffect(() => {
+    const savedState = loadState();
+    if (savedState) {
+      console.log('[Storage] Restored state from localStorage');
+      if (savedState.agents) setAgents(savedState.agents);
+      if (savedState.gcpConfig) setGcpConfig(prev => ({ ...prev, ...savedState.gcpConfig }));
+      if (savedState.workflowType) setWorkflowType(savedState.workflowType);
+      if (savedState.selectedAgentId) setSelectedAgentId(savedState.selectedAgentId);
+      if (savedState.timestamp) setLastSaved(new Date(savedState.timestamp));
+    }
+    hasLoadedInitialState.current = true;
+  }, []); // Run only once on mount
+
+  // Auto-save state changes (debounced)
+  useEffect(() => {
+    // Don't auto-save on initial mount
+    if (!hasLoadedInitialState.current || !autoSave) {
+      return;
+    }
+
+    const saveTimeout = setTimeout(() => {
+      const success = saveState({
+        agents,
+        gcpConfig,
+        workflowType,
+        selectedAgentId,
+      });
+
+      if (success) {
+        setLastSaved(new Date());
+        console.log('[Storage] Auto-saved state');
+      }
+    }, 1000); // Debounce for 1 second
+
+    return () => clearTimeout(saveTimeout);
+  }, [agents, gcpConfig, workflowType, selectedAgentId, autoSave]);
+
+  // Update auto-save preference in localStorage when it changes
+  useEffect(() => {
+    setAutoSaveEnabled(autoSave);
+  }, [autoSave]);
 
   const validateAgents = (currentAgents: Agent[]): { isValid: boolean, errors: ValidationErrors } => {
     const errors: ValidationErrors = { tools: {} };
@@ -260,6 +309,10 @@ const App: React.FC = () => {
   };
   
   const resetForm = () => {
+    if (!confirm('Reset to default configuration? This will clear all agents and saved state.')) {
+      return;
+    }
+
     const newInitialState = initialAgentsState.map(a => ({...a, id: crypto.randomUUID(), parentId: null}));
     setAgents(newInitialState);
     const firstAgent = newInitialState[0];
@@ -273,6 +326,11 @@ const App: React.FC = () => {
     setWorkflowType('Sequential');
     setChainlitSyncStatus('idle');
     setChainlitSyncMessage('');
+
+    // Clear saved state from localStorage
+    clearState();
+    setLastSaved(null);
+    console.log('[Storage] Cleared saved state');
   }
 
   return (
@@ -343,6 +401,22 @@ const App: React.FC = () => {
                     >
                     Reset Form
                 </button>
+            </div>
+            <div className="flex items-center justify-between text-sm text-slate-400 mt-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoSave}
+                  onChange={(e) => setAutoSave(e.target.checked)}
+                  className="rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900"
+                />
+                <span>Auto-save</span>
+              </label>
+              {lastSaved && (
+                <span className="text-xs">
+                  Last saved: {lastSaved.toLocaleTimeString()}
+                </span>
+              )}
             </div>
             {chainlitSyncMessage && (
               <p
