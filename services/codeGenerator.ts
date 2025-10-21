@@ -196,7 +196,7 @@ def ${snakeCaseToolName}(inputs: ${modelName}) -> str:
         if hourly_temp is not None:
             summary.append(f"Forecast @ {hourly_time}: {float(hourly_temp):.1f}{unit_suffix}, {hourly_desc}")
 
-    return "\n".join(summary)
+    return '\\n'.join(summary)
 `;
         }
 
