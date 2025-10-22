@@ -1,4 +1,5 @@
 import { Agent, Tool, ValidationIssue, PreflightValidationResult } from '../types';
+import { toSnakeCase } from '../utils/sanitization';
 
 const PYTHON_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const PYTHON_KEYWORDS = new Set([
@@ -21,14 +22,6 @@ interface PreflightInput {
 
 function isPythonIdentifier(value: string) {
   return PYTHON_IDENTIFIER.test(value) && !PYTHON_KEYWORDS.has(value);
-}
-
-function toSnakeCase(str: string) {
-  return str
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_]/g, '_')
-    .replace(/^(\d)/, '_$1');
 }
 
 function validateTool(tool: Tool, agentIndex: number, seen: Set<string>) {

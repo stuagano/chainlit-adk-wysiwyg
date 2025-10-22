@@ -1,21 +1,5 @@
 import { Agent, Tool, Parameter, GCPConfig, WorkflowType } from '../types';
-
-const toSnakeCase = (str: string) => {
-    // Sanitize the name to be a valid Python identifier
-    return str
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9_]/g, '_') // Replace invalid chars with underscore
-        .replace(/^(\d)/, '_$1');    // Prepend underscore if it starts with a number
-};
-
-const toKebabCase = (str: string) => {
-    return str.replace(/[\s_]+/g, '-').replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`).replace(/^-/, '').toLowerCase();
-};
-
-const toPascalCase = (str: string) => {
-    return str.replace(/(?:^|[^a-zA-Z0-9])([a-zA-Z0-9])/g, (g) => g.toUpperCase().replace(/[^a-zA-Z0-9]/g, ''));
-}
+import { toSnakeCase, toKebabCase, toPascalCase, escapePythonString } from '../utils/sanitization';
 
 
 const getPythonType = (type: Parameter['type']): string => {
@@ -27,45 +11,12 @@ const getPythonType = (type: Parameter['type']): string => {
     }
 };
 
-const generateToolsPy = (allTools: Tool[]): string => {
-    if (allTools.length === 0) {
-        return `# No tools defined across any agents.`;
-    }
-
-    const hasWeatherTool = allTools.some(tool => toSnakeCase(tool.name) === 'get_weather');
-
-    const imports = hasWeatherTool
-        ? `from __future__ import annotations
-
-import requests
-from datetime import datetime
-from typing import Optional
-import typing
-from pydantic import BaseModel, Field
-
-`
-        : `from pydantic import BaseModel, Field
-import typing
-
-`;
-
-    const uniqueTools = Array.from(new Map(allTools.map(tool => [tool.name, tool])).values());
-
-    const classAndFuncStrings = uniqueTools.map(tool => {
-        const snakeCaseToolName = toSnakeCase(tool.name);
-        const modelName = `${toPascalCase(tool.name)}Input`;
-
-        const fields = tool.parameters.map(param => {
-            const pythonType = getPythonType(param.type);
-            const required = param.required;
-            // Escape backslashes and double quotes for Python string literal
-            const escapedParamDesc = param.description.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-            const fieldArgs = `description="${escapedParamDesc}"`;
-            return `    ${toSnakeCase(param.name)}: ${required ? pythonType : `typing.Optional[${pythonType}]`} = Field(${required ? '...' : 'None'}, ${fieldArgs})`;
-        }).join('\n');
-
-        if (snakeCaseToolName === 'get_weather') {
-            return `
+/**
+ * Generates the complete weather tool implementation including helper functions.
+ * This is a special built-in tool with full API integration.
+ */
+const generateWeatherTool = (tool: Tool, modelName: string, snakeCaseToolName: string): string => {
+    return `
 WEATHER_CODES = {
     0: "Clear sky",
     1: "Mainly clear",
@@ -142,7 +93,7 @@ def _match_hour_${snakeCaseToolName}(hours: list[str], target: Optional[str]) ->
 
 
 def ${snakeCaseToolName}(inputs: ${modelName}) -> str:
-    """${tool.description.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"""
+    """${escapePythonString(tool.description)}"""
 
     latitude, longitude, label = _geocode_${snakeCaseToolName}(inputs.location)
     temperature_unit, unit_suffix = _pick_unit_${snakeCaseToolName}(inputs.unit)
@@ -198,12 +149,53 @@ def ${snakeCaseToolName}(inputs: ${modelName}) -> str:
 
     return '\\n'.join(summary)
 `;
+};
+
+const generateToolsPy = (allTools: Tool[]): string => {
+    if (allTools.length === 0) {
+        return `# No tools defined across any agents.`;
+    }
+
+    const hasWeatherTool = allTools.some(tool => toSnakeCase(tool.name) === 'get_weather');
+
+    const imports = hasWeatherTool
+        ? `from __future__ import annotations
+
+import requests
+from datetime import datetime
+from typing import Optional
+import typing
+from pydantic import BaseModel, Field
+
+`
+        : `from pydantic import BaseModel, Field
+import typing
+
+`;
+
+    const uniqueTools = Array.from(new Map(allTools.map(tool => [tool.name, tool])).values());
+
+    const classAndFuncStrings = uniqueTools.map(tool => {
+        const snakeCaseToolName = toSnakeCase(tool.name);
+        const modelName = `${toPascalCase(tool.name)}Input`;
+
+        // Special handling for built-in weather tool
+        if (snakeCaseToolName === 'get_weather') {
+            return generateWeatherTool(tool, modelName, snakeCaseToolName);
         }
+
+        // Generate Pydantic model fields for tool parameters
+        const fields = tool.parameters.map(param => {
+            const pythonType = getPythonType(param.type);
+            const required = param.required;
+            const escapedParamDesc = escapePythonString(param.description);
+            const fieldArgs = `description="${escapedParamDesc}"`;
+            return `    ${toSnakeCase(param.name)}: ${required ? pythonType : `typing.Optional[${pythonType}]`} = Field(${required ? '...' : 'None'}, ${fieldArgs})`;
+        }).join('\n');
 
         const model = `class ${modelName}(BaseModel):\n${fields || '    pass'}\n`;
 
-        // Escape backslashes and double quotes for Python docstring
-        const escapedToolDesc = tool.description.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        const escapedToolDesc = escapePythonString(tool.description);
         const functionDef = `
 def ${snakeCaseToolName}(inputs: ${modelName}) -> str:
     """${escapedToolDesc}"""
@@ -222,11 +214,10 @@ tools = [${uniqueTools.map(t => toSnakeCase(t.name)).join(', ')}]
     return imports + classAndFuncStrings + toolList;
 };
 
-const generateMainPy = (agents: Agent[], gcpConfig: GCPConfig, workflowType: WorkflowType): string => {
-    if (agents.length === 0) {
-        return `# No agents defined. Please add an agent to the workflow.`;
-    }
-
+/**
+ * Generates Python imports for main.py based on agent LLM models and workflow type.
+ */
+const generateMainPyImports = (agents: Agent[], workflowType: WorkflowType): string => {
     const allModels = agents.map(agent => agent.llmModel);
     const usesOpenAI = allModels.some(model => !model.startsWith('gemini'));
     const usesVertex = allModels.some(model => model.startsWith('gemini'));
@@ -244,17 +235,35 @@ from adk.workflow import ${toPascalCase(workflowType)}
         imports += 'from adk.llm.provider.vertex import VertexAI\n';
     }
 
-    let memoryImport: string;
-    let memoryInstantiation: string;
-    if (gcpConfig.useMemoryBank) {
-        memoryImport = 'from adk.memory.google.memory_bank import MemoryBank';
-        memoryInstantiation = `MemoryBank(project_id="${gcpConfig.projectId}", location="${gcpConfig.region}")`;
-    } else {
-        memoryImport = 'from adk.memory.memory import Memory as LocalMemory';
-        memoryInstantiation = 'LocalMemory()';
-    }
+    return imports;
+};
 
+/**
+ * Generates memory configuration import and instantiation code.
+ */
+const generateMemoryConfig = (gcpConfig: GCPConfig): { import: string; instantiation: string } => {
+    if (gcpConfig.useMemoryBank) {
+        return {
+            import: 'from adk.memory.google.memory_bank import MemoryBank',
+            instantiation: `MemoryBank(project_id="${gcpConfig.projectId}", location="${gcpConfig.region}")`
+        };
+    } else {
+        return {
+            import: 'from adk.memory.memory import Memory as LocalMemory',
+            instantiation: 'LocalMemory()'
+        };
+    }
+};
+
+/**
+ * Generates environment variable checks for API keys and credentials.
+ */
+const generateEnvChecks = (agents: Agent[], gcpConfig: GCPConfig): string => {
     const envChecks: string[] = [];
+    const allModels = agents.map(agent => agent.llmModel);
+    const usesOpenAI = allModels.some(model => !model.startsWith('gemini'));
+    const usesVertex = allModels.some(model => model.startsWith('gemini'));
+
     if (usesOpenAI) {
         envChecks.push(`if not os.getenv("OPENAI_API_KEY"):
     raise ValueError("OPENAI_API_KEY environment variable not set")`);
@@ -264,7 +273,14 @@ from adk.workflow import ${toPascalCase(workflowType)}
     print("Warning: GOOGLE_APPLICATION_CREDENTIALS environment variable not set. Using default credentials.")`);
     }
 
-    const agentCreationFunctions = agents.map((agent, index) => {
+    return envChecks.join('\n\n');
+};
+
+/**
+ * Generates agent creation factory functions.
+ */
+const generateAgentCreationFunctions = (agents: Agent[], memoryInstantiation: string): string => {
+    return agents.map((agent, index) => {
         const agentFunctionName = `create_agent_${index + 1}`;
         let llmInstantiation: string;
         if (agent.llmModel.startsWith('gemini')) {
@@ -283,76 +299,98 @@ def ${agentFunctionName}() -> Agent:
     )
 `;
     }).join('\n');
-    
+};
+
+/**
+ * Generates workflow instantiation code based on workflow type.
+ */
+const generateWorkflowInstantiation = (agents: Agent[], workflowType: WorkflowType): string => {
     const agentVarMap = new Map<string, string>();
     agents.forEach((agent, index) => {
-      agentVarMap.set(agent.id, `agent_${index + 1}`);
+        agentVarMap.set(agent.id, `agent_${index + 1}`);
     });
 
-    let workflowInstantiation: string;
+    const agentInstantiations = agents.map((_, index) =>
+        `agent_${index + 1} = create_agent_${index + 1}()`
+    ).join('\n    ');
+
+    const agentList = agents.map((_, index) => `agent_${index + 1}`);
+
     switch(workflowType) {
         case 'Hierarchical':
             const structure: Record<string, string[]> = {};
             agents.forEach(agent => {
-              if (agent.parentId && agentVarMap.has(agent.parentId)) {
-                const parentVar = agentVarMap.get(agent.parentId)!;
-                const childVar = agentVarMap.get(agent.id)!;
-                if (!structure[parentVar]) {
-                  structure[parentVar] = [];
+                if (agent.parentId && agentVarMap.has(agent.parentId)) {
+                    const parentVar = agentVarMap.get(agent.parentId)!;
+                    const childVar = agentVarMap.get(agent.id)!;
+                    if (!structure[parentVar]) {
+                        structure[parentVar] = [];
+                    }
+                    structure[parentVar].push(childVar);
                 }
-                structure[parentVar].push(childVar);
-              }
             });
             const structureString = JSON.stringify(structure, null, 4)
-                                        .replace(/"/g, '') // remove quotes from keys/values
-                                        .replace(/\[\n\s*/g, '[') // compact arrays
-                                        .replace(/\n\s*\]/g, ']')
-                                        .replace(/,\n\s*/g, ', ');
+                .replace(/"/g, '') // remove quotes from keys/values
+                .replace(/\[\n\s*/g, '[') // compact arrays
+                .replace(/\n\s*\]/g, ']')
+                .replace(/,\n\s*/g, ', ');
 
-
-            workflowInstantiation = `
+            return `
     # Create instances of each agent
-    ${agents.map((_, index) => `agent_${index + 1} = create_agent_${index + 1}()`).join('\n    ')}
+    ${agentInstantiations}
 
     # Assemble the agents into a hierarchical workflow
     workflow = Hierarchical(
-        agents=[${agents.map((_, index) => `agent_${index + 1}`).join(', ')}],
+        agents=[${agentList.join(', ')}],
         structure=${structureString || '{}'}
     )
     cl.user_session.set("workflow", workflow)`;
-            break;
+
         case 'Collaborative':
-             workflowInstantiation = `
+            return `
     # Create instances of each agent
-    ${agents.map((_, index) => `agent_${index + 1} = create_agent_${index + 1}()`).join('\n    ')}
+    ${agentInstantiations}
 
     # Assemble the agents into a collaborative workflow
     workflow = Collaborative(
         agents=[
-            ${agents.map((_, index) => `agent_${index + 1}`).join(',\n            ')}
+            ${agentList.join(',\n            ')}
         ]
     )
     cl.user_session.set("workflow", workflow)`;
-            break;
+
         case 'Sequential':
         default:
-             workflowInstantiation = `
+            return `
     # Create instances of each agent
-    ${agents.map((_, index) => `agent_${index + 1} = create_agent_${index + 1}()`).join('\n    ')}
+    ${agentInstantiations}
 
     # Assemble the agents into a sequential workflow
     # The output of agent_1 becomes the input for agent_2, and so on.
     workflow = Sequential(
         agents=[
-            ${agents.map((_, index) => `agent_${index + 1}`).join(',\n            ')}
+            ${agentList.join(',\n            ')}
         ]
     )
     cl.user_session.set("workflow", workflow)`;
-            break;
+    }
+};
+
+const generateMainPy = (agents: Agent[], gcpConfig: GCPConfig, workflowType: WorkflowType): string => {
+    if (agents.length === 0) {
+        return `# No agents defined. Please add an agent to the workflow.`;
     }
 
+    // Generate all components using helper functions
+    const imports = generateMainPyImports(agents, workflowType);
+    const memoryConfig = generateMemoryConfig(gcpConfig);
+    const envChecks = generateEnvChecks(agents, gcpConfig);
+    const agentCreationFunctions = generateAgentCreationFunctions(agents, memoryConfig.instantiation);
+    const workflowInstantiation = generateWorkflowInstantiation(agents, workflowType);
+
+    // Assemble the complete main.py file
     return `${imports}
-${memoryImport}
+${memoryConfig.import}
 
 # Import your tools. ADK will automatically discover them in the 'tools.py' file.
 import tools as agent_tools
@@ -363,7 +401,7 @@ import tools as agent_tools
 
 logging.basicConfig(level=logging.INFO)
 
-${envChecks.join('\n\n')}
+${envChecks}
 ${agentCreationFunctions}
 
 @cl.on_chat_start
