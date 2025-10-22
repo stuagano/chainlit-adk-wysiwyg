@@ -24,28 +24,41 @@ export const CodePreview: React.FC<CodePreviewProps> = ({ code }) => {
   const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (code && !activeTab) {
-      setActiveTab(Object.keys(code)[0]);
+    if (code && Object.keys(code).length > 0 && !activeTab) {
+      const firstKey = Object.keys(code)[0];
+      if (firstKey !== undefined) {
+        setActiveTab(firstKey);
+      }
     }
-  }, [code, activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]); // Only run when code changes, not when activeTab changes
 
   if (!code) {
     return (
       <Card className="flex items-center justify-center h-96">
         <div className="text-center text-slate-500">
-          <p className="text-lg">Click the "Generate & Preview Code" button</p>
+          <p className="text-lg">Click the &quot;Generate & Preview Code&quot; button</p>
           <p>to see the generated Python files here.</p>
         </div>
       </Card>
     );
   }
 
-  const handleCopy = (filename: string) => {
-    navigator.clipboard.writeText(code[filename]);
-    setCopiedStates({ ...copiedStates, [filename]: true });
-    setTimeout(() => {
-        setCopiedStates(prev => ({...prev, [filename]: false}));
-    }, 2000);
+  const handleCopy = async (filename: string) => {
+    try {
+      const content = code[filename];
+      if (content !== undefined) {
+        await navigator.clipboard.writeText(content);
+        setCopiedStates({ ...copiedStates, [filename]: true });
+        setTimeout(() => {
+          setCopiedStates(prev => ({...prev, [filename]: false}));
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      // Fallback: show error state briefly
+      alert('Failed to copy to clipboard. Please try selecting and copying manually.');
+    }
   };
 
   const tabs = Object.keys(code);

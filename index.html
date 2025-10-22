@@ -5,8 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ADK & Chainlit Agent Builder</title>
+    <!--
+      SECURITY NOTE: Tailwind CSS loaded from CDN for rapid development.
+      For production deployment:
+      - Consider migrating to npm package with PostCSS configuration
+      - Or use versioned CDN with Subresource Integrity (SRI) hash
+      - Current CDN URL is not versioned and changes frequently, making SRI impractical
+      See: https://tailwindcss.com/docs/installation for npm installation
+    -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
       /* For Webkit-based browsers (Chrome, Safari) */
       ::-webkit-scrollbar {

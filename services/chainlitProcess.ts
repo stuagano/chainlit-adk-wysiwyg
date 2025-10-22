@@ -1,7 +1,7 @@
-import { spawn, ChildProcessWithoutNullStreams } from 'node:child_process';
+import { spawn, ChildProcess } from 'node:child_process';
 import http from 'node:http';
 
-let chainlitProcess: ChildProcessWithoutNullStreams | null = null;
+let chainlitProcess: ChildProcess | null = null;
 let starting = false;
 
 const isPortOpen = async (port: number) => {
@@ -57,6 +57,7 @@ export const ensureChainlitRunning = async () => {
 
   chainlitProcess.on('exit', () => {
     chainlitProcess = null;
+    starting = false;
   });
 
   starting = false;

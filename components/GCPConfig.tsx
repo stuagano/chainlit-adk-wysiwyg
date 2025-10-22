@@ -78,8 +78,10 @@ export const GCPConfig: React.FC<GCPConfigProps> = ({ gcpConfig, updateGCPConfig
                         onChange={onFileChange}
                         className="hidden"
                     />
-                    <p className="mt-1 text-xs text-slate-500">
-                        The key is read in-browser and added to the zip. It is never stored or transmitted.
+                    <p className="mt-1 text-xs text-yellow-500/80">
+                        ⚠️ SECURITY: Credentials are validated but NOT included in the generated files.
+                        You must download your service account key separately and configure it via environment variables.
+                        See the generated README.md for secure setup instructions.
                     </p>
                 </div>
                  <div className="border-t border-slate-700 pt-4 mt-2">
@@ -89,7 +91,7 @@ export const GCPConfig: React.FC<GCPConfigProps> = ({ gcpConfig, updateGCPConfig
                                 Enable Memory Bank
                             </label>
                             <p className={`text-sm transition-colors ${gcpConfig.projectId ? 'text-slate-400' : 'text-slate-500'}`}>
-                                Use GCP's managed, persistent memory. Requires deployment.
+                                Use GCP&apos;s managed, persistent memory. Requires deployment.
                             </p>
                         </div>
                          <label htmlFor="useMemoryBank" className="relative inline-flex items-center cursor-pointer">

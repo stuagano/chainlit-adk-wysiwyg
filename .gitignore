@@ -15,6 +15,18 @@ venv/
 .chainlit/
 key.json
 
+# Security: Credential and sensitive files
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*credentials*.json
+gcp-credentials.json
+*.p12
+*.pfx
+service-account*.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
