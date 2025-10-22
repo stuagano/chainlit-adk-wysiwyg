@@ -230,17 +230,10 @@ gcloud builds submit --config cloudbuild.yaml --project=$PROJECT_ID
  * Generates .gcloudignore for GCP deployment
  */
 export const generateGcloudIgnore = (): string => {
-    return `.git
-.gitignore
+    return `venv/
 __pycache__/
 *.pyc
 .env
-.env.local
-node_modules/
-.DS_Store
-*.log
-chainlit_app/
 gcp-credentials.json
-*.md
 `;
 };
