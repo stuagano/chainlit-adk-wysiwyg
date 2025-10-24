@@ -226,11 +226,11 @@ describe('App Component', () => {
       const mockFetch = vi.fn()
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ success: true }),
+          json: async () => ({ success: true, message: 'Files synced', files: [] }),
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ success: true }),
+          json: async () => ({ success: true, message: 'Chainlit is running', url: 'http://localhost:8000' }),
         });
 
       global.fetch = mockFetch;
@@ -264,11 +264,11 @@ describe('App Component', () => {
       const mockFetch = vi.fn()
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ success: true }),
+          json: async () => ({ success: true, message: 'Files synced', files: [] }),
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ success: true }),
+          json: async () => ({ success: true, message: 'Chainlit is running', url: 'http://localhost:8000' }),
         });
 
       global.fetch = mockFetch;
@@ -310,9 +310,10 @@ describe('App Component', () => {
       const syncButton = screen.getByText(/Sync to Chainlit/i);
       fireEvent.click(syncButton);
 
+      // With retry logic, this will take multiple attempts and wrap error in NetworkError
       await waitFor(() => {
-        expect(screen.getByText(/Network error/i)).toBeInTheDocument();
-      });
+        expect(screen.getByText(/Network request failed|Network error/i)).toBeInTheDocument();
+      }, { timeout: 10000 });
     });
 
     it('opens new window on successful sync', async () => {
@@ -322,11 +323,11 @@ describe('App Component', () => {
       const mockFetch = vi.fn()
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ success: true }),
+          json: async () => ({ success: true, message: 'Files synced', files: [] }),
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ success: true }),
+          json: async () => ({ success: true, message: 'Chainlit is running', url: 'http://localhost:8000' }),
         });
 
       global.fetch = mockFetch;

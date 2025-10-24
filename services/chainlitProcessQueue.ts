@@ -7,6 +7,7 @@
 
 import { spawn, ChildProcess } from 'node:child_process';
 import http from 'node:http';
+import { logError, ProcessError, TimeoutError } from '../utils/errors';
 
 interface ProcessState {
   process: ChildProcess | null;
@@ -126,7 +127,14 @@ async function startProcess(): Promise<void> {
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
-    console.log('[Chainlit] Starting server...');
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: 'INFO',
+      type: 'process_starting',
+      component: 'chainlit-process',
+      command: `${npmCmd} run chainlit:dev`,
+      port: CONFIG.PORT,
+    }));
 
     const proc = spawn(npmCmd, ['run', 'chainlit:dev'], {
       cwd: process.cwd(),
@@ -140,30 +148,76 @@ async function startProcess(): Promise<void> {
 
     // Set up process event handlers
     proc.on('error', (error) => {
-      console.error('[Chainlit] Process error:', error);
+      const processError = new ProcessError('Chainlit process error', undefined, {
+        errorMessage: error.message,
+        pid: proc.pid,
+        status: state.status,
+      });
+
+      logError(processError, {
+        component: 'chainlit-process',
+        operation: 'process-error',
+      });
+
       state.lastError = error.message;
       state.failureCount++;
 
       if (state.status === 'starting') {
         state.status = 'idle';
-        processQueue(false, error);
+        processQueue(false, processError);
       }
     });
 
     proc.on('exit', (code, signal) => {
-      console.log(`[Chainlit] Process exited with code ${code} and signal ${signal}`);
+      console.log(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: code === 0 ? 'INFO' : 'WARN',
+        type: 'process_exit',
+        component: 'chainlit-process',
+        code,
+        signal,
+        pid: proc.pid,
+        status: state.status,
+      }));
+
       state.process = null;
       state.startTime = null;
 
       if (code !== 0 && code !== null) {
         state.failureCount++;
+
+        const exitError = new ProcessError(
+          `Chainlit process exited with non-zero code`,
+          code,
+          { signal, pid: proc.pid }
+        );
+
+        logError(exitError, {
+          component: 'chainlit-process',
+          operation: 'process-exit',
+        });
       }
 
       const wasStarting = state.status === 'starting';
       state.status = 'idle';
 
       if (wasStarting) {
-        processQueue(false, new Error(`Process exited with code ${code}`));
+        processQueue(false, new ProcessError(`Process exited unexpectedly`, code || undefined));
+      }
+    });
+
+    // Handle uncaught exceptions in child process
+    proc.on('close', (code, signal) => {
+      if (code !== 0 && code !== null) {
+        console.log(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: 'WARN',
+          type: 'process_close',
+          component: 'chainlit-process',
+          code,
+          signal,
+          pid: proc.pid,
+        }));
       }
     });
 
@@ -175,7 +229,18 @@ async function startProcess(): Promise<void> {
 
     if (!isReady) {
       proc.kill();
-      throw new Error('Server failed to start within timeout period');
+      const timeoutError = new TimeoutError(
+        'Chainlit server failed to start within timeout period',
+        CONFIG.MAX_STARTUP_TIME,
+        { port: CONFIG.PORT }
+      );
+
+      logError(timeoutError, {
+        component: 'chainlit-process',
+        operation: 'startup-timeout',
+      });
+
+      throw timeoutError;
     }
 
     state.status = 'running';
@@ -183,10 +248,24 @@ async function startProcess(): Promise<void> {
     state.failureCount = 0; // Reset on successful start
     state.lastError = null;
 
-    console.log('[Chainlit] Server started successfully');
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: 'INFO',
+      type: 'process_started',
+      component: 'chainlit-process',
+      port: CONFIG.PORT,
+      pid: proc.pid,
+      startupTime: Date.now() - (state.startTime?.getTime() || Date.now()),
+    }));
+
     processQueue(true);
   } catch (error) {
-    console.error('[Chainlit] Failed to start:', error);
+    logError(error, {
+      component: 'chainlit-process',
+      operation: 'startProcess',
+      failureCount: state.failureCount,
+    });
+
     state.status = 'idle';
     state.lastError = error instanceof Error ? error.message : 'Unknown error';
     state.failureCount++;

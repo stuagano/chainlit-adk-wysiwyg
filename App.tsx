@@ -14,6 +14,9 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { GCPConfig } from './components/GCPConfig';
 import { WorkflowDesigner } from './components/WorkflowDesigner';
+import { postJson } from './utils/fetch';
+import { gcpServiceAccountSchema, syncChainlitResponseSchema, launchChainlitResponseSchema, safeParseJson } from './utils/schemas';
+import { logError, getErrorMessage, ValidationError } from './utils/errors';
 
 const DownloadIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -163,24 +166,40 @@ const App: React.FC = () => {
       setChainlitSyncStatus('syncing');
       setChainlitSyncMessage('');
 
-      const response = await fetch('/api/sync-chainlit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ files: generatedCode }),
-      });
+      // Sync files with retry and timeout
+      const syncResult = await postJson<{ files: Record<string, string> }, unknown>(
+        '/api/sync-chainlit',
+        { files: generatedCode },
+        {
+          timeout: 30000, // 30 seconds
+          retries: 3,
+        }
+      );
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(data.error || 'Failed to sync Chainlit files');
+      // Validate sync response
+      const syncValidation = syncChainlitResponseSchema.safeParse(syncResult);
+      if (!syncValidation.success || !syncValidation.data.success) {
+        throw new ValidationError(
+          syncValidation.success ? syncValidation.data.error || 'Failed to sync files' : 'Invalid sync response'
+        );
       }
 
-      const launchResponse = await fetch('/api/launch-chainlit', { method: 'POST' });
+      // Launch Chainlit with retry and timeout
+      const launchResult = await postJson<Record<string, never>, unknown>(
+        '/api/launch-chainlit',
+        {},
+        {
+          timeout: 30000, // 30 seconds
+          retries: 2,
+        }
+      );
 
-      if (!launchResponse.ok) {
-        const data = await launchResponse.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(data.error || 'Failed to launch Chainlit preview');
+      // Validate launch response
+      const launchValidation = launchChainlitResponseSchema.safeParse(launchResult);
+      if (!launchValidation.success || !launchValidation.data.success) {
+        throw new ValidationError(
+          launchValidation.success ? launchValidation.data.error || 'Failed to launch Chainlit' : 'Invalid launch response'
+        );
       }
 
       window.open('http://localhost:8000', '_blank');
@@ -188,9 +207,9 @@ const App: React.FC = () => {
       setChainlitSyncStatus('success');
       setChainlitSyncMessage('Synced to chainlit_app/. Chainlit preview opened in new tab.');
     } catch (error) {
-      console.error(error);
+      logError(error, { component: 'App', operation: 'handleSyncChainlit' });
       setChainlitSyncStatus('error');
-      setChainlitSyncMessage(error instanceof Error ? error.message : 'Failed to sync Chainlit files');
+      setChainlitSyncMessage(getErrorMessage(error));
     }
   }, [agents, generatedCode]);
 
@@ -216,7 +235,7 @@ const App: React.FC = () => {
         URL.revokeObjectURL(link.href);
       })
       .catch((error) => {
-        console.error('Failed to generate ZIP file:', error);
+        logError(error, { component: 'App', operation: 'handleDownloadCode' });
         alert('Failed to create download file. Please try again.');
       });
   };
@@ -254,41 +273,36 @@ const App: React.FC = () => {
         try {
           const content = event.target?.result as string;
 
-          // Validate JSON structure
-          const parsed = JSON.parse(content);
+          // Validate JSON and service account schema
+          const validation = safeParseJson(gcpServiceAccountSchema, content, 'GCP Service Account Key');
 
-          // Validate it looks like a GCP service account key
-          if (parsed.type !== 'service_account') {
-            alert('Invalid GCP service account key. The file must contain a service account key with type "service_account".');
+          if (!validation.success) {
+            alert(`Invalid GCP service account key:\n${validation.error.issues.map(i => `• ${i.message}`).join('\n')}`);
             updateGCPConfig('serviceAccountKeyJson', '');
             updateGCPConfig('serviceAccountKeyName', '');
             e.target.value = ''; // Clear the input
+            logError(
+              new ValidationError('Invalid service account key uploaded', {
+                filename: file.name,
+                error: validation.error.message,
+              })
+            );
             return;
           }
 
-          // Additional validation for required fields
-          const requiredFields = ['project_id', 'private_key_id', 'private_key', 'client_email'];
-          const missingFields = requiredFields.filter(field => !parsed[field]);
-          if (missingFields.length > 0) {
-            alert(`Invalid GCP service account key. Missing required fields: ${missingFields.join(', ')}`);
-            updateGCPConfig('serviceAccountKeyJson', '');
-            updateGCPConfig('serviceAccountKeyName', '');
-            e.target.value = ''; // Clear the input
-            return;
-          }
-
+          // Successfully validated
           updateGCPConfig('serviceAccountKeyJson', content);
           updateGCPConfig('serviceAccountKeyName', file.name);
         } catch (error) {
-          console.error('Failed to parse JSON:', error);
-          alert('Invalid JSON file. Please upload a valid GCP service account key.');
+          logError(error, { component: 'App', operation: 'handleSAKeyFileChange' });
+          alert('Failed to process service account key file. Please try again.');
           updateGCPConfig('serviceAccountKeyJson', '');
           updateGCPConfig('serviceAccountKeyName', '');
           e.target.value = ''; // Clear the input
         }
       };
       reader.onerror = (error) => {
-        console.error('Failed to read file:', error);
+        logError(error, { component: 'App', operation: 'handleSAKeyFileChange', filename: file.name });
         alert('Failed to read the service account key file. Please try again.');
         updateGCPConfig('serviceAccountKeyJson', '');
         updateGCPConfig('serviceAccountKeyName', '');
