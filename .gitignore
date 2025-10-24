@@ -1,3 +1,7 @@
+# Dependencies
+node_modules/
+package-lock.json.bak
+
 # Logs
 logs
 *.log
@@ -7,15 +11,47 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Build outputs
+dist/
+dist-ssr/
+build/
 *.local
-venv/
-.chainlit/
-key.json
 
-# Security: Credential and sensitive files
+# Testing
+coverage/
+.nyc_output/
+.vitest/
+test-results/
+playwright-report/
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+*.egg-info/
+.eggs/
+
+# Chainlit
+.chainlit/
+chainlit_app/.chainlit/
+chainlit_app/main.py
+chainlit_app/tools.py
+chainlit_app/requirements.txt
+chainlit_app/README.md
+chainlit_app/Dockerfile
+chainlit_app/.gcloudignore
+
+# Security: Credentials and sensitive files
 .env
 .env.local
 .env.*.local
@@ -26,14 +62,61 @@ gcp-credentials.json
 *.p12
 *.pfx
 service-account*.json
+key.json
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+!.vscode/settings.json
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.swp
+*.swo
+*~
+
+# OS files
+Thumbs.db
+.AppleDouble
+.LSOverride
+._*
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+tmp/
+temp/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Yarn
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# turbo
+.turbo
+
+# vercel
+.vercel

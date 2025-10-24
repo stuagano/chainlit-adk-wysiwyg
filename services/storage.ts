@@ -6,6 +6,14 @@
  */
 
 import { Agent, GCPConfig, WorkflowType } from '../types';
+import {
+  agentSchema,
+  partialGcpConfigSchema,
+  partialAppStateSchema,
+  safeParseJson,
+  safeValidate,
+} from '../utils/schemas';
+import { logError, ValidationError } from '../utils/errors';
 
 const STORAGE_VERSION = '1.0.0';
 const STORAGE_KEYS = {
@@ -111,11 +119,35 @@ export function loadState(): Partial<AppState> | null {
       return null; // No saved state
     }
 
-    const agents: Agent[] = JSON.parse(agentsJson);
-    const gcpConfig: Partial<GCPConfig> = gcpConfigJson ? JSON.parse(gcpConfigJson) : {};
+    // Validate agents array with schema
+    const agentsResult = safeParseJson(agentSchema.array(), agentsJson, 'Agents');
+    if (!agentsResult.success) {
+      logError(
+        new ValidationError('Failed to validate agents from localStorage', {
+          error: agentsResult.error.message,
+        })
+      );
+      return null;
+    }
+
+    // Validate GCP config if present
+    let gcpConfig: Partial<GCPConfig> = {};
+    if (gcpConfigJson) {
+      const gcpResult = safeParseJson(partialGcpConfigSchema, gcpConfigJson, 'GCP Config');
+      if (!gcpResult.success) {
+        logError(
+          new ValidationError('Failed to validate GCP config from localStorage', {
+            error: gcpResult.error.message,
+          })
+        );
+        // Don't fail completely, just skip invalid GCP config
+      } else {
+        gcpConfig = gcpResult.data;
+      }
+    }
 
     return {
-      agents,
+      agents: agentsResult.data,
       gcpConfig,
       workflowType: workflowType || 'Sequential',
       selectedAgentId: selectedAgentId || null,
@@ -123,7 +155,7 @@ export function loadState(): Partial<AppState> | null {
       timestamp: lastSave || new Date().toISOString(),
     };
   } catch (error) {
-    console.error('Failed to load state from localStorage:', error);
+    logError(error, { component: 'storage', operation: 'loadState' });
     return null;
   }
 }
@@ -206,16 +238,24 @@ export function exportState(): string | null {
  */
 export function importState(json: string): boolean {
   try {
-    const state = JSON.parse(json) as Partial<AppState>;
+    // Validate imported state with schema
+    const result = safeParseJson(partialAppStateSchema, json, 'Imported State');
 
-    // Validate the imported state
-    if (!state.agents || !Array.isArray(state.agents)) {
-      throw new Error('Invalid state: agents must be an array');
+    if (!result.success) {
+      throw new ValidationError('Invalid state format', {
+        error: result.error.message,
+        issues: result.error.issues,
+      });
     }
 
-    return saveState(state);
+    // Validate that agents array exists and is not empty
+    if (!result.data.agents || result.data.agents.length === 0) {
+      throw new ValidationError('Invalid state: agents must be a non-empty array');
+    }
+
+    return saveState(result.data);
   } catch (error) {
-    console.error('Failed to import state:', error);
+    logError(error, { component: 'storage', operation: 'importState' });
     return false;
   }
 }
