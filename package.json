@@ -22,7 +22,12 @@
     "type-check": "tsc --noEmit",
     "security:audit": "bash scripts/security-audit.sh",
     "security:npm": "npm audit --audit-level=moderate",
-    "security:fix": "npm audit fix"
+    "security:fix": "npm audit fix",
+    "container:build": "bash scripts/podman-build.sh",
+    "container:run": "bash scripts/podman-run.sh",
+    "container:up": "bash scripts/podman-compose-up.sh",
+    "container:down": "bash scripts/podman-compose-down.sh",
+    "container:logs": "bash scripts/podman-logs.sh"
   },
   "engines": {
     "node": ">=20.0.0",

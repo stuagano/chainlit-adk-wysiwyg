@@ -120,3 +120,9 @@ pids/
 
 # vercel
 .vercel
+
+# Container artifacts
+*.tar
+*.tar.gz
+.container-id
+podman-compose-*.log

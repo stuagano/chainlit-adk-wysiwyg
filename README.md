@@ -25,6 +25,7 @@
 - [Development](#development)
 - [Testing](#testing)
 - [Deployment](#deployment)
+- [Containerization (Podman/Docker)](#containerization-podmandocker)
 - [Project Structure](#project-structure)
 - [Security](#security)
 - [Contributing](#contributing)
@@ -266,6 +267,86 @@ npm run test:coverage
 - ✅ React components
 - ✅ Code generation
 - ✅ File operations
+
+---
+
+## 🐳 Containerization (Podman/Docker)
+
+The application includes full support for containerization using Podman (or Docker).
+
+### Quick Start with Podman
+
+```bash
+# 1. Build the container
+./scripts/podman-build.sh
+
+# 2. Run with podman-compose
+./scripts/podman-compose-up.sh
+
+# Or run standalone
+./scripts/podman-run.sh
+```
+
+### Access Services
+
+- **Backend API:** http://localhost:3001
+- **Chainlit UI:** http://localhost:8000
+
+### Container Features
+
+- Multi-stage build for optimized image size
+- Node.js + Python runtime
+- Rootless container support
+- Health checks and auto-restart
+- Persistent volumes for generated code
+- Resource limits and security hardening
+
+### Available Scripts
+
+```bash
+./scripts/podman-build.sh           # Build container image
+./scripts/podman-run.sh             # Run container standalone
+./scripts/podman-compose-up.sh      # Start with compose
+./scripts/podman-compose-down.sh    # Stop compose services
+./scripts/podman-logs.sh            # View container logs
+```
+
+### Requirements
+
+- **Podman** 4.0+ or **Docker** 20.10+
+- **podman-compose** (optional, for compose support)
+
+### Installation
+
+**Linux (RHEL/Fedora):**
+```bash
+sudo dnf install -y podman
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get install -y podman
+```
+
+**macOS:**
+```bash
+brew install podman
+podman machine init && podman machine start
+```
+
+**Windows:**
+Download from [Podman Desktop](https://podman-desktop.io/)
+
+### Documentation
+
+For complete containerization documentation, including:
+- Advanced configuration
+- Volume management
+- Network setup
+- Troubleshooting
+- Production deployment
+
+See [PODMAN.md](./PODMAN.md)
 
 ---
 
