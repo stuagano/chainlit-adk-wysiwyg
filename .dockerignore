@@ -101,10 +101,13 @@ pids/
 # Container Files (don't copy into themselves)
 # =============================================================================
 Containerfile
+Containerfile.dev
 Dockerfile
 .dockerignore
 docker-compose.yml
+docker-compose.dev.yml
 podman-compose.yml
+.devcontainer/
 
 # =============================================================================
 # Temporary and Cache

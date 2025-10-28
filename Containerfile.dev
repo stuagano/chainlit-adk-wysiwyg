@@ -1,0 +1,111 @@
+# Development Container for Chainlit ADK WYSIWYG
+# Optimized for local development with hot-reload and volume mounting
+
+ARG NODE_VERSION=20
+FROM node:${NODE_VERSION}-alpine
+
+LABEL maintainer="Chainlit ADK WYSIWYG Team"
+LABEL description="Development container with Node.js + Python for Chainlit ADK"
+LABEL version="dev"
+
+# Install system dependencies for development
+RUN apk add --no-cache \
+    # Python runtime and build tools
+    python3 \
+    py3-pip \
+    python3-dev \
+    build-base \
+    gcc \
+    g++ \
+    musl-dev \
+    libffi-dev \
+    openssl-dev \
+    # Development tools
+    git \
+    vim \
+    nano \
+    curl \
+    wget \
+    bash \
+    bash-completion \
+    # Process and network tools
+    procps \
+    htop \
+    net-tools \
+    iputils \
+    # Additional utilities
+    jq \
+    yq \
+    && ln -sf python3 /usr/bin/python
+
+# Install global npm packages for development workflow
+RUN npm install -g \
+    npm@latest \
+    typescript@latest \
+    tsx \
+    nodemon \
+    concurrently \
+    prettier \
+    eslint
+
+WORKDIR /workspace
+
+# Copy package files for dependency installation
+COPY package*.json ./
+
+# Install Node.js dependencies
+RUN npm ci && npm cache clean --force
+
+# Create directory for Chainlit app
+RUN mkdir -p chainlit_app
+
+# Create Python virtual environment
+RUN python3 -m venv chainlit_app/.venv
+
+# Upgrade pip in virtual environment
+RUN chainlit_app/.venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Install Python development dependencies
+RUN chainlit_app/.venv/bin/pip install --no-cache-dir \
+    chainlit>=1.0.0 \
+    google-generativeai>=0.3.0 \
+    python-dotenv>=1.0.0 \
+    # Development tools
+    black \
+    flake8 \
+    pylint \
+    pytest \
+    ipython \
+    # Type checking
+    mypy
+
+# Copy the rest of the application (for reference, will be overridden by volume mount)
+COPY . .
+
+# Create a non-root user for development
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs && \
+    chown -R nodejs:nodejs /workspace
+
+# Switch to non-root user
+USER nodejs
+
+# Set environment variables for development
+ENV NODE_ENV=development \
+    BACKEND_PORT=3001 \
+    CHAINLIT_PORT=8000 \
+    PATH="/workspace/chainlit_app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    # Enable better file watching for hot-reload
+    CHOKIDAR_USEPOLLING=true \
+    WATCHPACK_POLLING=true
+
+# Expose development ports
+EXPOSE 3000 3001 8000
+
+# Health check for development
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD node --version && python --version || exit 1
+
+# Default command: Start all development servers
+CMD ["npm", "run", "dev:all"]

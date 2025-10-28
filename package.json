@@ -27,7 +27,14 @@
     "container:run": "bash scripts/podman-run.sh",
     "container:up": "bash scripts/podman-compose-up.sh",
     "container:down": "bash scripts/podman-compose-down.sh",
-    "container:logs": "bash scripts/podman-logs.sh"
+    "container:logs": "bash scripts/podman-logs.sh",
+    "dev:container": "bash scripts/dev-container-start.sh",
+    "dev:container:build": "docker-compose -f docker-compose.dev.yml build",
+    "dev:container:up": "docker-compose -f docker-compose.dev.yml up",
+    "dev:container:down": "docker-compose -f docker-compose.dev.yml down",
+    "dev:container:shell": "bash scripts/dev-container-shell.sh",
+    "dev:container:logs": "bash scripts/dev-container-logs.sh",
+    "dev:container:rebuild": "bash scripts/dev-container-rebuild.sh"
   },
   "engines": {
     "node": ">=20.0.0",

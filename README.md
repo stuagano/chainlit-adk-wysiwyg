@@ -189,6 +189,68 @@ Visit http://localhost:8000 to interact with your agent workflow.
 
 ---
 
+## 🐳 Container-Based Development (Optional)
+
+For a consistent, reproducible development environment without installing Node.js or Python locally.
+
+### Quick Start with Containers
+
+**Option A: VS Code DevContainer (Recommended)**
+```bash
+# 1. Install Docker Desktop or Podman
+# 2. Install VS Code "Dev Containers" extension
+# 3. Open project in VS Code
+code .
+
+# 4. Click "Reopen in Container" when prompted
+# Wait ~30 seconds, then you're ready to code!
+```
+
+**Option B: Docker Compose**
+```bash
+# Start development environment
+./scripts/dev-container-start.sh
+
+# Services available at:
+#   - Frontend: http://localhost:3000
+#   - Backend:  http://localhost:3001
+#   - Chainlit: http://localhost:8000
+
+# Shell into container
+./scripts/dev-container-shell.sh
+
+# Stop environment
+./scripts/dev-container-stop.sh
+```
+
+### Benefits
+
+- ✅ **Zero Local Dependencies** - No Node.js or Python installation needed
+- ✅ **Instant Onboarding** - Clone → Open → Code (< 5 minutes)
+- ✅ **Team Consistency** - Everyone uses identical environment
+- ✅ **Hot Reload** - All services support live editing
+- ✅ **CI/CD Parity** - Dev environment matches production
+
+### Container Development Scripts
+
+```bash
+npm run dev:container          # Start dev container
+npm run dev:container:build    # Build dev container
+npm run dev:container:down     # Stop dev containers
+npm run dev:container:shell    # Shell into container
+npm run dev:container:logs     # View container logs
+```
+
+### Full Documentation
+
+See [CONTAINER_DEV.md](./CONTAINER_DEV.md) for complete guide including:
+- VS Code DevContainer setup
+- Docker Compose workflows
+- Troubleshooting
+- Advanced usage
+
+---
+
 ## 💻 Development
 
 ### Available Scripts
