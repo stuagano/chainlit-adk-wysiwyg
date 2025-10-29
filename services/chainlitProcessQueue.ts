@@ -35,6 +35,9 @@ const state: ProcessState = {
 // Request queue for handling concurrent launch requests
 const requestQueue: QueuedRequest[] = [];
 
+// Global lock to prevent race conditions
+let isLocked = false;
+
 // Configuration
 const CONFIG = {
   PORT: parseInt(process.env.CHAINLIT_PORT || '8000', 10),
@@ -105,20 +108,18 @@ async function waitForServerReady(): Promise<boolean> {
 }
 
 /**
- * Starts the Chainlit process
+ * Starts the Chainlit process. Throws on failure.
  */
 async function startProcess(): Promise<void> {
   if (state.status !== 'idle') {
     throw new Error(`Cannot start: current status is ${state.status}`);
   }
 
-  // Check failure count
   if (state.failureCount >= CONFIG.MAX_FAILURES) {
     const timeSinceLastFailure = state.lastError ? Date.now() - new Date(state.lastError).getTime() : Infinity;
     if (timeSinceLastFailure < CONFIG.FAILURE_RESET_TIME) {
       throw new Error(`Too many failures (${state.failureCount}). Please try again later.`);
     }
-    // Reset failure count after cooldown period
     state.failureCount = 0;
   }
 
@@ -126,7 +127,6 @@ async function startProcess(): Promise<void> {
 
   try {
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),
       level: 'INFO',
@@ -139,113 +139,31 @@ async function startProcess(): Promise<void> {
     const proc = spawn(npmCmd, ['run', 'chainlit:dev'], {
       cwd: process.cwd(),
       stdio: 'inherit',
-      env: {
-        ...process.env,
-      },
+      env: { ...process.env },
     });
-
     state.process = proc;
 
-    // Set up process event handlers
-    proc.on('error', (error) => {
-      const processError = new ProcessError('Chainlit process error', undefined, {
-        errorMessage: error.message,
-        pid: proc.pid,
-        status: state.status,
+    const processPromise = new Promise((_, reject) => {
+      proc.on('error', (error) => reject(new ProcessError('Chainlit process error', undefined, { errorMessage: error.message })));
+      proc.on('exit', (code) => {
+        if (state.status === 'starting') {
+          reject(new ProcessError('Process exited unexpectedly during startup', code || undefined));
+        }
       });
-
-      logError(processError, {
-        component: 'chainlit-process',
-        operation: 'process-error',
-      });
-
-      state.lastError = error.message;
-      state.failureCount++;
-
-      if (state.status === 'starting') {
-        state.status = 'idle';
-        processQueue(false, processError);
-      }
     });
 
-    proc.on('exit', (code, signal) => {
-      console.log(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        level: code === 0 ? 'INFO' : 'WARN',
-        type: 'process_exit',
-        component: 'chainlit-process',
-        code,
-        signal,
-        pid: proc.pid,
-        status: state.status,
-      }));
-
-      state.process = null;
-      state.startTime = null;
-
-      if (code !== 0 && code !== null) {
-        state.failureCount++;
-
-        const exitError = new ProcessError(
-          `Chainlit process exited with non-zero code`,
-          code,
-          { signal, pid: proc.pid }
-        );
-
-        logError(exitError, {
-          component: 'chainlit-process',
-          operation: 'process-exit',
-        });
+    const serverReadyPromise = (async () => {
+      await new Promise(res => setTimeout(res, CONFIG.STARTUP_WAIT_TIME));
+      if (!await waitForServerReady()) {
+        throw new TimeoutError('Chainlit server failed to start within timeout period', CONFIG.MAX_STARTUP_TIME);
       }
+    })();
 
-      const wasStarting = state.status === 'starting';
-      state.status = 'idle';
-
-      if (wasStarting) {
-        processQueue(false, new ProcessError(`Process exited unexpectedly`, code || undefined));
-      }
-    });
-
-    // Handle uncaught exceptions in child process
-    proc.on('close', (code, signal) => {
-      if (code !== 0 && code !== null) {
-        console.log(JSON.stringify({
-          timestamp: new Date().toISOString(),
-          level: 'WARN',
-          type: 'process_close',
-          component: 'chainlit-process',
-          code,
-          signal,
-          pid: proc.pid,
-        }));
-      }
-    });
-
-    // Wait a bit for process to initialize
-    await new Promise(resolve => setTimeout(resolve, CONFIG.STARTUP_WAIT_TIME));
-
-    // Wait for server to be ready
-    const isReady = await waitForServerReady();
-
-    if (!isReady) {
-      proc.kill();
-      const timeoutError = new TimeoutError(
-        'Chainlit server failed to start within timeout period',
-        CONFIG.MAX_STARTUP_TIME,
-        { port: CONFIG.PORT }
-      );
-
-      logError(timeoutError, {
-        component: 'chainlit-process',
-        operation: 'startup-timeout',
-      });
-
-      throw timeoutError;
-    }
+    await Promise.race([processPromise, serverReadyPromise]);
 
     state.status = 'running';
     state.startTime = new Date();
-    state.failureCount = 0; // Reset on successful start
+    state.failureCount = 0;
     state.lastError = null;
 
     console.log(JSON.stringify({
@@ -258,58 +176,58 @@ async function startProcess(): Promise<void> {
       startupTime: Date.now() - (state.startTime?.getTime() || Date.now()),
     }));
 
-    processQueue(true);
   } catch (error) {
+    state.status = 'idle';
+    state.failureCount++;
+    state.lastError = error instanceof Error ? error.message : String(error);
+    if (state.process) {
+      state.process.kill();
+      state.process = null;
+    }
     logError(error, {
       component: 'chainlit-process',
       operation: 'startProcess',
       failureCount: state.failureCount,
     });
-
-    state.status = 'idle';
-    state.lastError = error instanceof Error ? error.message : 'Unknown error';
-    state.failureCount++;
-
-    if (state.process) {
-      state.process.kill();
-      state.process = null;
-    }
-
-    processQueue(false, error instanceof Error ? error : new Error('Failed to start server'));
+    throw error;
   }
 }
+
 
 /**
  * Ensures Chainlit server is running, with queue support for concurrent requests
  */
-export async function ensureChainlitRunning(): Promise<void> {
-  // Check if already running
-  if (state.status === 'running' && await isPortOpen(CONFIG.PORT)) {
-    return;
-  }
+export function ensureChainlitRunning(): Promise<void> {
+  const queuePromise = new Promise<void>((resolve, reject) => {
+    requestQueue.push({ resolve, reject, timestamp: new Date() });
+  });
 
-  // If currently starting, queue this request
-  if (state.status === 'starting') {
-    return new Promise<void>((resolve, reject) => {
-      requestQueue.push({ resolve, reject, timestamp: new Date() });
-    });
-  }
-
-  // If idle, start the process
-  if (state.status === 'idle') {
-    const queuePromise = new Promise<void>((resolve, reject) => {
-      requestQueue.push({ resolve, reject, timestamp: new Date() });
-    });
-
-    // Start process (will resolve/reject all queued requests)
-    startProcess().catch(() => {
-      // Error already handled in startProcess
-    });
-
+  if (isLocked) {
     return queuePromise;
   }
 
-  throw new Error(`Unexpected state: ${state.status}`);
+  isLocked = true;
+
+  (async () => {
+    try {
+      if (state.status === 'running' && await isPortOpen(CONFIG.PORT)) {
+        processQueue(true);
+      } else if (state.status === 'idle') {
+        await startProcess();
+        processQueue(true);
+      } else {
+        throw new Error(`Cannot start server in state: ${state.status}`);
+      }
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      processQueue(false, err);
+      logError(err, { component: 'ensureChainlitRunning' });
+    } finally {
+      isLocked = false;
+    }
+  })();
+
+  return queuePromise;
 }
 
 /**
@@ -338,7 +256,6 @@ export async function stopChainlit(): Promise<void> {
 
     state.process.once('exit', cleanup);
 
-    // Force kill after timeout
     const killTimeout = setTimeout(() => {
       if (state.process && !state.process.killed) {
         console.warn('[Chainlit] Force killing unresponsive process');
@@ -346,10 +263,7 @@ export async function stopChainlit(): Promise<void> {
       }
     }, 5000);
 
-    // Try graceful shutdown first
     state.process.kill('SIGTERM');
-
-    // Clean up timeout
     state.process.once('exit', () => clearTimeout(killTimeout));
   });
 }
