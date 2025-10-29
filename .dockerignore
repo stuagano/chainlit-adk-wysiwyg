@@ -1,0 +1,121 @@
+# Chainlit ADK WYSIWYG - Container Ignore File
+# Excludes files from container builds to reduce image size and improve security
+
+# =============================================================================
+# Node.js
+# =============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+env/
+
+# =============================================================================
+# Environment and Secrets
+# =============================================================================
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*credentials*.json
+*.p12
+service-account*.json
+
+# =============================================================================
+# Development and IDE
+# =============================================================================
+.git/
+.gitignore
+.gitattributes
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# =============================================================================
+# Build and Test
+# =============================================================================
+coverage/
+.nyc_output/
+test/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+.cache/
+dist-ssr/
+
+# =============================================================================
+# Documentation
+# =============================================================================
+*.md
+!README.md
+docs/
+.github/
+.claude/
+
+# =============================================================================
+# Logs
+# =============================================================================
+logs/
+*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# =============================================================================
+# Container Files (don't copy into themselves)
+# =============================================================================
+Containerfile
+Containerfile.dev
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.dev.yml
+podman-compose.yml
+.devcontainer/
+
+# =============================================================================
+# Temporary and Cache
+# =============================================================================
+tmp/
+temp/
+.tmp/
+.temp/
+*.tmp
+*.bak
+*.orig

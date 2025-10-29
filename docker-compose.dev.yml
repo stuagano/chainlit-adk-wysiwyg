@@ -1,0 +1,174 @@
+version: '3.8'
+
+# Development environment with hot-reload support
+# Usage: docker-compose -f docker-compose.dev.yml up
+
+services:
+  # Main development service
+  dev:
+    build:
+      context: .
+      dockerfile: Containerfile.dev
+      args:
+        NODE_VERSION: "20"
+
+    image: chainlit-adk-wysiwyg:dev
+    container_name: chainlit-adk-dev
+
+    # Mount source code for live editing with hot-reload
+    volumes:
+      # Mount entire project directory
+      - .:/workspace:cached
+
+      # Prevent overwriting installed dependencies from host
+      - /workspace/node_modules
+      - /workspace/chainlit_app/.venv
+
+      # Mount .env.local for API keys (if it exists)
+      - ./.env.local:/workspace/.env.local:ro
+
+      # Persist bash history across container restarts
+      - dev-bash-history:/home/nodejs/.bash_history
+
+    # Expose ports to host machine
+    ports:
+      - "3000:3000"   # Frontend (Vite dev server)
+      - "3001:3001"   # Backend (Express API)
+      - "8000:8000"   # Chainlit server
+      - "5555:5555"   # Optional: Additional dev port
+
+    # Environment variables for development
+    environment:
+      # Node.js environment
+      - NODE_ENV=development
+      - BACKEND_PORT=3001
+      - CHAINLIT_PORT=8000
+      - FRONTEND_URL=http://localhost:3000
+      - BACKEND_URL=http://localhost:3001
+
+      # Enable hot reload / file watching
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+
+      # API keys (loaded from .env.local or environment)
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+
+      # GCP configuration (optional)
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
+      - GCP_REGION=${GCP_REGION:-us-central1}
+
+      # Debug settings
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # Python unbuffered output for better logging
+      - PYTHONUNBUFFERED=1
+
+    # Start all development servers
+    command: npm run dev:all
+
+    # Restart policy for development
+    restart: unless-stopped
+
+    # Use init to handle process signals properly
+    init: true
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Network configuration
+    networks:
+      - dev-network
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Resource limits (adjust based on your system)
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  # Optional: Standalone frontend service (for separate container testing)
+  frontend:
+    profiles: ["separate"]
+    build:
+      context: .
+      dockerfile: Containerfile.dev
+    container_name: chainlit-adk-frontend
+    volumes:
+      - .:/workspace:cached
+      - /workspace/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - BACKEND_URL=http://backend:3001
+    command: npm run dev
+    networks:
+      - dev-network
+
+  # Optional: Standalone backend service (for separate container testing)
+  backend:
+    profiles: ["separate"]
+    build:
+      context: .
+      dockerfile: Containerfile.dev
+    container_name: chainlit-adk-backend
+    volumes:
+      - .:/workspace:cached
+      - /workspace/node_modules
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - BACKEND_PORT=3001
+      - FRONTEND_URL=http://localhost:3000
+    command: npm run dev:backend
+    networks:
+      - dev-network
+
+  # Optional: Standalone Chainlit service (for separate container testing)
+  chainlit:
+    profiles: ["separate"]
+    build:
+      context: .
+      dockerfile: Containerfile.dev
+    container_name: chainlit-adk-chainlit
+    volumes:
+      - .:/workspace:cached
+      - /workspace/chainlit_app/.venv
+      - ./.env.local:/workspace/.env.local:ro
+    ports:
+      - "8000:8000"
+    environment:
+      - CHAINLIT_PORT=8000
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    command: npm run chainlit:dev
+    networks:
+      - dev-network
+
+# Networks
+networks:
+  dev-network:
+    driver: bridge
+    name: chainlit-dev-network
+
+# Volumes for persistence
+volumes:
+  dev-bash-history:
+    driver: local

@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  dev:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        # Use the NODE_VERSION build arg to override the Node.js version
+        NODE_VERSION: "20"
+
+    volumes:
+      # Mount the entire project (except excluded paths)
+      - ..:/workspace:cached
+
+      # Prevent overwriting node_modules and .venv from host
+      - /workspace/node_modules
+      - /workspace/chainlit_app/.venv
+
+      # Persist bash history
+      - chainlit-bashhistory:/commandhistory
+
+      # Mount .env.local if it exists (for API keys)
+      - ../.env.local:/workspace/.env.local
+
+    # Expose ports to host
+    ports:
+      - "3000:3000"   # Frontend (Vite)
+      - "3001:3001"   # Backend API
+      - "8000:8000"   # Chainlit Server
+
+    # Environment variables for development
+    environment:
+      - NODE_ENV=development
+      - BACKEND_PORT=3001
+      - CHAINLIT_PORT=8000
+      - FRONTEND_URL=http://localhost:3000
+      - BACKEND_URL=http://localhost:3001
+
+      # Enable hot reload for file watching
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+
+      # Pass through API keys from .env.local
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+    # Keep container running
+    command: sleep infinity
+
+    # Use init to properly handle process signals
+    init: true
+
+    # Network configuration
+    networks:
+      - dev-network
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  chainlit-bashhistory:
+
+networks:
+  dev-network:
+    driver: bridge

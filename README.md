@@ -25,6 +25,7 @@
 - [Development](#development)
 - [Testing](#testing)
 - [Deployment](#deployment)
+- [Containerization (Podman/Docker)](#containerization-podmandocker)
 - [Project Structure](#project-structure)
 - [Security](#security)
 - [Contributing](#contributing)
@@ -188,6 +189,68 @@ Visit http://localhost:8000 to interact with your agent workflow.
 
 ---
 
+## 🐳 Container-Based Development (Optional)
+
+For a consistent, reproducible development environment without installing Node.js or Python locally.
+
+### Quick Start with Containers
+
+**Option A: VS Code DevContainer (Recommended)**
+```bash
+# 1. Install Docker Desktop or Podman
+# 2. Install VS Code "Dev Containers" extension
+# 3. Open project in VS Code
+code .
+
+# 4. Click "Reopen in Container" when prompted
+# Wait ~30 seconds, then you're ready to code!
+```
+
+**Option B: Docker Compose**
+```bash
+# Start development environment
+./scripts/dev-container-start.sh
+
+# Services available at:
+#   - Frontend: http://localhost:3000
+#   - Backend:  http://localhost:3001
+#   - Chainlit: http://localhost:8000
+
+# Shell into container
+./scripts/dev-container-shell.sh
+
+# Stop environment
+./scripts/dev-container-stop.sh
+```
+
+### Benefits
+
+- ✅ **Zero Local Dependencies** - No Node.js or Python installation needed
+- ✅ **Instant Onboarding** - Clone → Open → Code (< 5 minutes)
+- ✅ **Team Consistency** - Everyone uses identical environment
+- ✅ **Hot Reload** - All services support live editing
+- ✅ **CI/CD Parity** - Dev environment matches production
+
+### Container Development Scripts
+
+```bash
+npm run dev:container          # Start dev container
+npm run dev:container:build    # Build dev container
+npm run dev:container:down     # Stop dev containers
+npm run dev:container:shell    # Shell into container
+npm run dev:container:logs     # View container logs
+```
+
+### Full Documentation
+
+See [CONTAINER_DEV.md](./CONTAINER_DEV.md) for complete guide including:
+- VS Code DevContainer setup
+- Docker Compose workflows
+- Troubleshooting
+- Advanced usage
+
+---
+
 ## 💻 Development
 
 ### Available Scripts
@@ -266,6 +329,86 @@ npm run test:coverage
 - ✅ React components
 - ✅ Code generation
 - ✅ File operations
+
+---
+
+## 🐳 Containerization (Podman/Docker)
+
+The application includes full support for containerization using Podman (or Docker).
+
+### Quick Start with Podman
+
+```bash
+# 1. Build the container
+./scripts/podman-build.sh
+
+# 2. Run with podman-compose
+./scripts/podman-compose-up.sh
+
+# Or run standalone
+./scripts/podman-run.sh
+```
+
+### Access Services
+
+- **Backend API:** http://localhost:3001
+- **Chainlit UI:** http://localhost:8000
+
+### Container Features
+
+- Multi-stage build for optimized image size
+- Node.js + Python runtime
+- Rootless container support
+- Health checks and auto-restart
+- Persistent volumes for generated code
+- Resource limits and security hardening
+
+### Available Scripts
+
+```bash
+./scripts/podman-build.sh           # Build container image
+./scripts/podman-run.sh             # Run container standalone
+./scripts/podman-compose-up.sh      # Start with compose
+./scripts/podman-compose-down.sh    # Stop compose services
+./scripts/podman-logs.sh            # View container logs
+```
+
+### Requirements
+
+- **Podman** 4.0+ or **Docker** 20.10+
+- **podman-compose** (optional, for compose support)
+
+### Installation
+
+**Linux (RHEL/Fedora):**
+```bash
+sudo dnf install -y podman
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get install -y podman
+```
+
+**macOS:**
+```bash
+brew install podman
+podman machine init && podman machine start
+```
+
+**Windows:**
+Download from [Podman Desktop](https://podman-desktop.io/)
+
+### Documentation
+
+For complete containerization documentation, including:
+- Advanced configuration
+- Volume management
+- Network setup
+- Troubleshooting
+- Production deployment
+
+See [PODMAN.md](./PODMAN.md)
 
 ---
 
