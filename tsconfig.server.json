@@ -7,7 +7,7 @@
     "outDir": "./dist",
     "rootDir": ".",
     "noEmit": false,
-    "allowImportingTsExtensions": true,
+    "allowImportingTsExtensions": false,
 
     /* Remove browser-specific settings */
     "lib": ["ES2022"],

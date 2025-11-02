@@ -8,6 +8,7 @@
 import { spawn, ChildProcess } from 'node:child_process';
 import http from 'node:http';
 import { logError, ProcessError, TimeoutError } from '../utils/errors';
+import { websocketService } from './websocketService';
 
 interface ProcessState {
   process: ChildProcess | null;
@@ -21,6 +22,7 @@ interface QueuedRequest {
   resolve: () => void;
   reject: (error: Error) => void;
   timestamp: Date;
+  userId?: string;
 }
 
 // Process state
@@ -77,6 +79,19 @@ async function isPortOpen(port: number): Promise<boolean> {
 }
 
 /**
+ * Sends queue position updates to all users in queue
+ */
+function broadcastQueuePositions() {
+  const queueData = requestQueue.map((req, index) => ({
+    userId: req.userId || 'unknown',
+    position: index + 1,
+    estimatedWaitTime: (index + 1) * 5000, // Estimate 5 seconds per position
+  }));
+
+  websocketService.broadcastQueueUpdates(queueData);
+}
+
+/**
  * Processes the request queue
  */
 function processQueue(success: boolean, error?: Error) {
@@ -84,11 +99,26 @@ function processQueue(success: boolean, error?: Error) {
   requestQueue.length = 0; // Clear queue
 
   if (success) {
-    requests.forEach(req => req.resolve());
+    requests.forEach(req => {
+      req.resolve();
+      // Send success notification
+      if (req.userId) {
+        websocketService.sendNotification(req.userId, 'success', 'Chainlit server is ready');
+      }
+    });
   } else {
     const err = error || new Error('Failed to start Chainlit server');
-    requests.forEach(req => req.reject(err));
+    requests.forEach(req => {
+      req.reject(err);
+      // Send error notification
+      if (req.userId) {
+        websocketService.sendError(req.userId, err.message);
+      }
+    });
   }
+
+  // Update remaining queue positions
+  broadcastQueuePositions();
 }
 
 /**
@@ -197,10 +227,20 @@ async function startProcess(): Promise<void> {
 /**
  * Ensures Chainlit server is running, with queue support for concurrent requests
  */
-export function ensureChainlitRunning(): Promise<void> {
+export function ensureChainlitRunning(userId?: string): Promise<void> {
   const queuePromise = new Promise<void>((resolve, reject) => {
-    requestQueue.push({ resolve, reject, timestamp: new Date() });
+    requestQueue.push({ resolve, reject, timestamp: new Date(), userId });
+
+    // Send queue position update to the user
+    if (userId) {
+      const position = requestQueue.length;
+      const estimatedWaitTime = position * 5000; // Estimate 5 seconds per position
+      websocketService.sendQueuePosition(userId, position, requestQueue.length, estimatedWaitTime);
+    }
   });
+
+  // Broadcast queue updates to all users
+  broadcastQueuePositions();
 
   if (isLocked) {
     return queuePromise;

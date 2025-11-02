@@ -12,6 +12,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
+import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -19,6 +20,7 @@ import { promisify } from 'node:util';
 import { ensureChainlitRunning } from '../services/chainlitProcessQueue';
 import { validateFilenames } from '../utils/validation';
 import { logError, ValidationError, FileSystemError, ProcessError, isAppError, getErrorMessage } from '../utils/errors';
+import { websocketService } from '../services/websocketService';
 
 const execFileAsync = promisify(execFile);
 
@@ -26,24 +28,35 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const httpServer = http.createServer(app);
 const PORT = process.env.BACKEND_PORT || 3001;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+// Initialize WebSocket service
+websocketService.initialize(httpServer, FRONTEND_URL);
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: FRONTEND_URL,
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
 
-// Request logging middleware with unique request IDs
+// Request logging middleware with unique request IDs and user tracking
 app.use((req: Request, _res: Response, next: NextFunction) => {
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  // Get userId from header or query param, or generate one
+  const userId = (req.headers['x-user-id'] as string) || (req.query.userId as string) || requestId;
+
   (req as any).requestId = requestId;
+  (req as any).userId = userId;
+
   console.log(JSON.stringify({
     timestamp: new Date().toISOString(),
     level: 'INFO',
     type: 'request',
     requestId,
+    userId,
     method: req.method,
     path: req.path,
     ip: req.ip,
@@ -64,11 +77,15 @@ app.get('/health', (_req: Request, res: Response) => {
  */
 app.post('/api/sync-chainlit', async (req: Request, res: Response) => {
   const requestId = (req as any).requestId;
+  const userId = (req as any).userId;
   let tempDir: string | null = null;
   const startTime = Date.now();
 
   try {
     const { files } = req.body;
+
+    // Send initial progress update
+    websocketService.sendSyncProgress(userId, 'validating', 10, 'Validating files...');
 
     // Validate payload
     if (!files || typeof files !== 'object') {
@@ -156,6 +173,9 @@ app.post('/api/sync-chainlit', async (req: Request, res: Response) => {
       });
     }
 
+    // Update progress: validation in progress
+    websocketService.sendSyncProgress(userId, 'validating', 30, 'Validating Python syntax...');
+
     // Validate Python syntax
     const pythonTargets = ['main.py', 'tools.py']
       .map((name) => (files[name] && tempDir ? path.join(tempDir, name) : null))
@@ -194,6 +214,9 @@ app.post('/api/sync-chainlit', async (req: Request, res: Response) => {
       }
     }
 
+    // Update progress: syncing files
+    websocketService.sendSyncProgress(userId, 'syncing', 50, 'Syncing files to chainlit_app...');
+
     // Copy files to chainlit_app directory
     const outputDir = path.resolve(__dirname, '..', 'chainlit_app');
 
@@ -226,11 +249,16 @@ app.post('/api/sync-chainlit', async (req: Request, res: Response) => {
     }
 
     const duration = Date.now() - startTime;
+
+    // Send completion progress
+    websocketService.sendSyncProgress(userId, 'complete', 100, 'Files synced successfully');
+
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),
       level: 'INFO',
       type: 'sync_success',
       requestId,
+      userId,
       fileCount: filenames.length,
       duration,
     }));
@@ -241,10 +269,14 @@ app.post('/api/sync-chainlit', async (req: Request, res: Response) => {
       files: filenames,
     });
   } catch (error) {
+    // Send error notification via WebSocket
+    websocketService.sendError(userId, getErrorMessage(error), isAppError(error) ? error.constructor.name : undefined);
+
     logError(error, {
       component: 'server',
       operation: 'sync-chainlit',
       requestId,
+      userId,
       duration: Date.now() - startTime,
     });
 
@@ -278,17 +310,28 @@ app.post('/api/sync-chainlit', async (req: Request, res: Response) => {
  */
 app.post('/api/launch-chainlit', async (req: Request, res: Response) => {
   const requestId = (req as any).requestId;
+  const userId = (req as any).userId;
   const startTime = Date.now();
 
   try {
-    await ensureChainlitRunning();
+    // Send initial status update
+    websocketService.sendSyncProgress(userId, 'launching', 70, 'Starting Chainlit server...');
+    websocketService.sendPreviewStatus(userId, 'starting', 'Launching Chainlit preview server...');
+
+    await ensureChainlitRunning(userId);
 
     const duration = Date.now() - startTime;
+
+    // Send success status updates
+    websocketService.sendPreviewStatus(userId, 'ready', 'Chainlit preview is ready', 'http://localhost:8000');
+    websocketService.sendNotification(userId, 'success', 'Chainlit preview server is running');
+
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),
       level: 'INFO',
       type: 'launch_success',
       requestId,
+      userId,
       duration,
     }));
 
@@ -298,10 +341,15 @@ app.post('/api/launch-chainlit', async (req: Request, res: Response) => {
       url: 'http://localhost:8000',
     });
   } catch (error) {
+    // Send error status updates
+    websocketService.sendPreviewStatus(userId, 'error', getErrorMessage(error));
+    websocketService.sendError(userId, getErrorMessage(error), isAppError(error) ? error.constructor.name : undefined);
+
     logError(error, {
       component: 'server',
       operation: 'launch-chainlit',
       requestId,
+      userId,
       duration: Date.now() - startTime,
     });
 
@@ -340,26 +388,35 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
 });
 
 // Start server
-const server = app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
-  console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+  console.log(`Frontend URL: ${FRONTEND_URL}`);
+  console.log(`WebSocket server enabled`);
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully...');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
+const gracefulShutdown = (signal: string) => {
+  console.log(`${signal} received, shutting down gracefully...`);
 
-process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully...');
-  server.close(() => {
-    console.log('Server closed');
+  // Stop accepting new connections
+  httpServer.close(() => {
+    console.log('HTTP server closed');
+
+    // Shutdown WebSocket connections
+    websocketService.shutdown();
+
+    console.log('Shutdown complete');
     process.exit(0);
   });
-});
+
+  // Force shutdown after 10 seconds
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 export default app;
