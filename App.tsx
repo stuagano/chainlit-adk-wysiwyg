@@ -9,6 +9,7 @@ import { ToolsConfig } from './components/ToolsConfig';
 import { ChainlitConfig } from './components/ChainlitConfig';
 import { CodePreview } from './components/CodePreview';
 import { PreflightPanel } from './components/PreflightPanel';
+import { RealtimeStatusPanel } from './components/RealtimeStatusPanel';
 import { initialAgentsState, initialGCPState } from './constants';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -17,6 +18,7 @@ import { WorkflowDesigner } from './components/WorkflowDesigner';
 import { postJson } from './utils/fetch';
 import { gcpServiceAccountSchema, syncChainlitResponseSchema, launchChainlitResponseSchema, safeParseJson } from './utils/schemas';
 import { logError, getErrorMessage, ValidationError } from './utils/errors';
+import { useWebSocket } from './hooks/useWebSocket';
 
 const DownloadIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -39,6 +41,22 @@ const App: React.FC = () => {
 
   // Use ref to track if we've loaded initial state to avoid auto-save on mount
   const hasLoadedInitialState = useRef(false);
+
+  // Generate or retrieve userId for WebSocket connection
+  const [userId] = useState(() => {
+    const stored = localStorage.getItem('userId');
+    if (stored) return stored;
+    const newId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem('userId', newId);
+    return newId;
+  });
+
+  // Initialize WebSocket connection
+  const websocket = useWebSocket({
+    url: (import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:3001',
+    userId,
+    autoConnect: true,
+  });
 
   const selectedAgent = useMemo(() => agents.find(a => a.id === selectedAgentId), [agents, selectedAgentId]);
 
@@ -173,6 +191,9 @@ const App: React.FC = () => {
         {
           timeout: 30000, // 30 seconds
           retries: 3,
+          headers: {
+            'X-User-Id': userId,
+          },
         }
       );
 
@@ -191,6 +212,9 @@ const App: React.FC = () => {
         {
           timeout: 30000, // 30 seconds
           retries: 2,
+          headers: {
+            'X-User-Id': userId,
+          },
         }
       );
 
@@ -211,7 +235,7 @@ const App: React.FC = () => {
       setChainlitSyncStatus('error');
       setChainlitSyncMessage(getErrorMessage(error));
     }
-  }, [agents, generatedCode]);
+  }, [agents, generatedCode, userId]);
 
   const handleDownloadCode = () => {
     if (!generatedCode) return;
@@ -387,6 +411,7 @@ const App: React.FC = () => {
         <div className="flex flex-col gap-6 sticky top-8">
             <h2 className="text-2xl font-bold text-slate-200 border-b border-slate-700 pb-2">Actions & Preview</h2>
             <PreflightPanel result={preflightResult} />
+            <RealtimeStatusPanel websocket={websocket} />
              <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-center">
                 <button
                 onClick={handleGenerateCode}
