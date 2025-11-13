@@ -147,12 +147,13 @@ app.post('/api/sync-chainlit', async (req: Request, res: Response) => {
     );
 
     // Write files to temp directory with error handling
+    // Support nested directory structures (backend/, .github/, etc.)
     try {
       await Promise.all(
         entries.map(async ([filename, content]) => {
-          // Use basename to strip any path components
-          const safeName = path.basename(filename);
-          const tempPath = path.join(tempDir!, safeName);
+          // Normalize the path and ensure it's safe
+          const normalizedPath = path.normalize(filename).replace(/^(\.\.[\/\\])+/, '');
+          const tempPath = path.join(tempDir!, normalizedPath);
 
           // Additional security check
           if (!tempPath.startsWith(tempDir!)) {
@@ -176,8 +177,8 @@ app.post('/api/sync-chainlit', async (req: Request, res: Response) => {
     // Update progress: validation in progress
     websocketService.sendSyncProgress(userId, 'validating', 30, 'Validating Python syntax...');
 
-    // Validate Python syntax
-    const pythonTargets = ['main.py', 'tools.py']
+    // Validate Python syntax (support both flat and backend/ structure)
+    const pythonTargets = ['backend/main.py', 'backend/tools.py', 'main.py', 'tools.py']
       .map((name) => (files[name] && tempDir ? path.join(tempDir, name) : null))
       .filter((target): target is string => Boolean(target));
 
@@ -218,6 +219,7 @@ app.post('/api/sync-chainlit', async (req: Request, res: Response) => {
     websocketService.sendSyncProgress(userId, 'syncing', 50, 'Syncing files to chainlit_app...');
 
     // Copy files to chainlit_app directory
+    // Preserve directory structure for nested files
     const outputDir = path.resolve(__dirname, '..', 'chainlit_app');
 
     try {
@@ -225,9 +227,10 @@ app.post('/api/sync-chainlit', async (req: Request, res: Response) => {
 
       await Promise.all(
         entries.map(async ([filename]) => {
-          const safeName = path.basename(filename);
-          const tempPath = path.join(tempDir!, safeName);
-          const destination = path.join(outputDir, safeName);
+          // Normalize path and preserve directory structure
+          const normalizedPath = path.normalize(filename).replace(/^(\.\.[\/\\])+/, '');
+          const tempPath = path.join(tempDir!, normalizedPath);
+          const destination = path.join(outputDir, normalizedPath);
 
           // Security check
           if (!destination.startsWith(outputDir)) {

@@ -3,13 +3,16 @@
  */
 
 /**
- * Validates a filename to prevent path traversal attacks
+ * Validates a filename or filepath to prevent path traversal attacks
+ * Now supports nested directory structures for agent-starter-pack compatibility
  *
- * @param filename - The filename to validate
+ * @param filename - The filename or filepath to validate
  * @returns true if filename is safe, false otherwise
  *
  * @example
  * validateFilename("main.py") // true
+ * validateFilename("backend/main.py") // true
+ * validateFilename(".github/workflows/ci.yml") // true
  * validateFilename("../../etc/passwd") // false
  * validateFilename("/etc/passwd") // false
  * validateFilename("file\0.txt") // false
@@ -42,6 +45,26 @@ export function validateFilename(filename: string): boolean {
   // Reject if filename is empty after trimming
   if (filename.trim().length === 0) {
     return false;
+  }
+
+  // Reject if contains backslashes (Windows paths - normalize to forward slashes)
+  if (filename.includes('\\')) {
+    return false;
+  }
+
+  // Split path into components and validate each part
+  const parts = filename.split('/');
+  for (const part of parts) {
+    // Reject empty parts (e.g., "backend//main.py")
+    if (part.trim().length === 0) {
+      return false;
+    }
+
+    // Allow hidden files/directories starting with dot (e.g., .github, .env.example)
+    // But reject path traversal attempts like ".", ".."
+    if (part === '.' || part === '..') {
+      return false;
+    }
   }
 
   // Additional security: reject special shell characters that could be dangerous
