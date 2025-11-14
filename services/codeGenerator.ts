@@ -33,6 +33,10 @@ import {
     generateCDWorkflow,
     generateDependabotConfig,
 } from './generators/githubActionsGenerator';
+import {
+    generateOneClickDeploy,
+    generateCloudShellTutorial,
+} from './generators/oneClickDeployGenerator';
 
 /**
  * Generates a complete multi-agent workflow codebase
@@ -103,6 +107,8 @@ export const generateCode = (
     if (gcpConfig.projectId) {
         files['cloudbuild.yaml'] = generateCloudBuildYaml(gcpConfig);
         files['deploy.sh'] = generateDeploySh(gcpConfig);
+        files['one-click-deploy.sh'] = generateOneClickDeploy(gcpConfig);
+        files['CLOUD_SHELL_TUTORIAL.md'] = generateCloudShellTutorial(gcpConfig);
         files['.github/workflows/deploy.yml'] = generateCDWorkflow(gcpConfig);
     }
 

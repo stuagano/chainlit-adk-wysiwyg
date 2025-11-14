@@ -73,7 +73,30 @@ ${memorySection}
 
 ## 🚀 Quick Start
 
-### Using Make (Recommended)
+### ⚡ Fastest Way (One-Click Deploy)
+
+\`\`\`bash
+# Step 1: Make script executable
+chmod +x one-click-deploy.sh
+
+# Step 2: Deploy!
+./one-click-deploy.sh
+\`\`\`
+
+**What this does:**
+- ✅ Checks requirements
+- ✅ Sets up Python environment
+- ✅ Installs dependencies
+- ✅ Configures GCP
+- ✅ Deploys to Cloud Run
+- ✅ Returns your live agent URL
+
+**Test locally first:**
+\`\`\`bash
+./one-click-deploy.sh --local-only
+\`\`\`
+
+### Using Make (Alternative)
 
 \`\`\`bash
 # Initialize project (creates venv, installs deps, creates .env)
@@ -253,38 +276,48 @@ This project is pre-configured for deployment to Google Cloud Run with enhanced 
       --project=${gcpConfig.projectId}
     \`\`\`
 
-### Deployment Options
+### Deployment Options (Ranked by Simplicity)
 
-#### Option 1: One-Command Deployment (Recommended)
+#### ⭐ Option 1: One-Click Deploy (EASIEST!)
 
-\`\`\`bash
-# Deploy using Makefile
-make deploy
-\`\`\`
-
-#### Option 2: Using Deployment Script
+**From 7 steps to 2 steps:**
 
 \`\`\`bash
-# Make script executable
-chmod +x deploy.sh
-
-# Run deployment
-./deploy.sh
+chmod +x one-click-deploy.sh
+./one-click-deploy.sh
 \`\`\`
 
-#### Option 3: Manual Cloud Build
+This single script:
+- Handles ALL setup automatically
+- Tests your code
+- Deploys to Cloud Run
+- Returns your live URL
+
+**First time:** Script will prompt you to add API keys to \`.env\`, then run again.
+
+#### Option 2: Cloud Shell Button
+
+[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor)
+
+Click the button above, then run:
+\`\`\`bash
+./one-click-deploy.sh
+\`\`\`
+
+**Zero local setup required!**
+
+#### Option 3: Makefile Commands
 
 \`\`\`bash
-# Build and deploy via Cloud Build
-make deploy-build
+make init      # One-time setup
+make deploy    # Deploy to GCP
 \`\`\`
 
-#### Option 4: Direct from Source
+#### Option 4: GitHub Actions (Automated)
 
-\`\`\`bash
-# Deploy directly from local source
-make deploy-local
-\`\`\`
+Push to \`main\` branch = automatic deployment! 🎉
+
+See \`.github/workflows/deploy.yml\` for configuration.
 
 ### GitHub Actions CI/CD
 
