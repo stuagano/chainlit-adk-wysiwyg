@@ -46,8 +46,19 @@ export const generateReadme = (agents: Agent[], gcpConfig: GCPConfig, workflowTy
 
     return `# Multi-Agent Workflow - ADK & Chainlit
 
-This multi-agent workflow was configured and generated using the ADK & Chainlit Agent Builder.
-Compatible with Google Cloud Platform agent-starter-pack patterns.
+<div align="center">
+
+[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_workspace=.&cloudshell_tutorial=CLOUD_SHELL_TUTORIAL.md)
+
+**🚀 One-Click Deploy:** Click the button above, then run \`./one-click-deploy.sh\`
+
+</div>
+
+---
+
+This multi-agent workflow was configured and generated using the **ADK & Chainlit Agent Builder**.
+
+✨ **Compatible with Google Cloud Platform agent-starter-pack patterns**
 
 ## 📁 Project Structure
 

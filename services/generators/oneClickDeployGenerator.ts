@@ -295,36 +295,135 @@ echo ""
 };
 
 /**
- * Generates a Cloud Shell button configuration
+ * Generates a Cloud Shell tutorial for the generated agent project
  * This allows users to deploy directly from the Cloud Console
  */
 export const generateCloudShellTutorial = (gcpConfig: GCPConfig): string => {
     const { projectId, serviceName } = gcpConfig;
 
-    return `# Cloud Shell Deployment Tutorial
+    return `# Cloud Shell Deployment Tutorial - ${serviceName}
 
-## One-Click Deploy from Cloud Shell
+<walkthrough-tutorial-duration duration="10"></walkthrough-tutorial-duration>
 
-[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=YOUR_REPO_URL&cloudshell_tutorial=TUTORIAL.md)
+## Welcome!
 
-This button will:
-1. Clone the repository
-2. Open in Cloud Shell Editor
-3. Guide you through deployment
+This tutorial will guide you through deploying your Chainlit ADK agent to Google Cloud Run.
 
-## Manual Cloud Shell Deployment
+**What you'll do:**
+- Set up environment variables
+- Test your agent locally
+- Deploy to Cloud Run
+- Get your live agent URL
 
-If you prefer manual deployment:
+Click **Start** to begin!
+
+---
+
+## Step 1: Environment Setup
+
+First, let's set up your environment variables.
+
+<walkthrough-editor-open-file filePath="cloudshell_open/.env.example">
+Open .env.example
+</walkthrough-editor-open-file>
+
+Copy it to create your `.env` file:
 
 \`\`\`bash
-# 1. Clone or upload your code to Cloud Shell
-# (Files are already uploaded if you clicked the button above)
+cp .env.example .env
+\`\`\`
 
-# 2. Run one-click deployment
+Then edit `.env` and add your API keys:
+
+<walkthrough-editor-open-file filePath="cloudshell_open/.env">
+Open .env
+</walkthrough-editor-open-file>
+
+<walkthrough-info-message>
+**Required:** Add your OpenAI API key or Google Cloud credentials depending on which LLM you're using.
+</walkthrough-info-message>
+
+## Step 2: Test Locally
+
+Before deploying, let's test your agent locally:
+
+\`\`\`bash
 chmod +x one-click-deploy.sh
+./one-click-deploy.sh --local-only
+\`\`\`
+
+This will:
+1. Create a virtual environment
+2. Install dependencies
+3. Start Chainlit on port 8000
+
+Use Cloud Shell's **Web Preview** to test your agent:
+- Click the web preview button (🔍)
+- Select "Preview on port 8000"
+
+<walkthrough-info-message>
+Press Ctrl+C in the terminal when you're done testing.
+</walkthrough-info-message>
+
+## Step 3: Deploy to Cloud Run
+
+Now let's deploy to production!
+
+\`\`\`bash
+./one-click-deploy.sh
+\`\`\`
+
+The script will:
+1. ✅ Authenticate with GCP
+2. ✅ Enable required APIs
+3. ✅ Build your Docker image
+4. ✅ Deploy to Cloud Run
+5. ✅ Return your live URL
+
+<walkthrough-info-message>
+This may take 5-10 minutes. The script shows progress as it runs.
+</walkthrough-info-message>
+
+## Step 4: Access Your Agent
+
+Once deployment completes, you'll see your agent's URL:
+
+\`\`\`
+https://${serviceName}-XXXXX-uc.a.run.app
+\`\`\`
+
+Click the URL to interact with your agent!
+
+## Quick Commands Reference
+
+\`\`\`bash
+# Test locally
+./one-click-deploy.sh --local-only
+
+# Deploy to Cloud Run
 ./one-click-deploy.sh
 
-# That's it! ✨
+# Skip tests (faster)
+./one-click-deploy.sh --skip-tests
+
+# View logs
+gcloud run services logs read ${serviceName} --region=us-central1
+\`\`\`
+
+## Manual Cloud Shell Deployment (Alternative)
+
+If you prefer manual steps:
+
+\`\`\`bash
+# 1. Set up environment
+make init
+source .venv/bin/activate
+
+# 2. Test locally
+make run
+
+# 3. Deploy to GCP
+make deploy
 \`\`\`
 
 ## Environment Variables in Cloud Shell

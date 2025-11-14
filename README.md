@@ -5,11 +5,15 @@
 
 **Visual Multi-Agent Workflow Builder for Chainlit**
 
+[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/stuagano/chainlit-adk-wysiwyg&cloudshell_tutorial=docs/CLOUDSHELL_TUTORIAL.md)
+
 [![Node.js CI](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![TypeScript](https://img.shields.io/badge/typescript-5.8-blue)](https://www.typescriptlang.org/)
 [![Tests](https://img.shields.io/badge/tests-212%20passing-success)](./test/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**🚀 Try it now:** Click the "Open in Cloud Shell" button above to get started in your browser!
 
 </div>
 
