@@ -1,0 +1,60 @@
+# Dockerfile for Standalone Chainlit Deployment
+# Optimized for Google Cloud Run
+#
+# This Dockerfile creates a lightweight container that runs only the Chainlit application
+# without the frontend builder or backend API server.
+#
+# Build: docker build -f Dockerfile.chainlit -t chainlit-app .
+# Run:   docker run -p 8000:8000 -e GEMINI_API_KEY=your_key chainlit-app
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy chainlit application files
+COPY chainlit_app/ /app/
+
+# Create virtual environment and install dependencies
+RUN python -m venv /app/.venv && \
+    /app/.venv/bin/pip install --no-cache-dir --upgrade pip
+
+# Install default dependencies if requirements.txt doesn't exist
+# This will be overwritten if requirements.txt exists
+RUN if [ ! -f requirements.txt ]; then \
+    echo "chainlit>=1.0.0" > requirements.txt && \
+    echo "google-generativeai>=0.3.0" >> requirements.txt && \
+    echo "python-dotenv>=1.0.0" >> requirements.txt; \
+    fi
+
+RUN /app/.venv/bin/pip install --no-cache-dir -r requirements.txt
+
+# Create non-root user for security
+RUN useradd -m -u 1001 chainlit && \
+    chown -R chainlit:chainlit /app
+
+USER chainlit
+
+# Expose Chainlit port
+EXPOSE 8000
+
+# Environment variables
+ENV CHAINLIT_PORT=8000 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000').read()" || exit 1
+
+# Make start script executable
+RUN chmod +x /app/start.sh
+
+# Start Chainlit server
+CMD ["/app/start.sh"]

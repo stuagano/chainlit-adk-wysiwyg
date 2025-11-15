@@ -44,10 +44,16 @@ dmypy.json
 # Chainlit
 .chainlit/
 chainlit_app/.chainlit/
+
+# Allow template/setup files but ignore generated code
+!chainlit_app/.env.example
+!chainlit_app/start.sh
+!chainlit_app/README.md
+
+# Ignore generated files (these are created by the UI builder)
 chainlit_app/main.py
 chainlit_app/tools.py
 chainlit_app/requirements.txt
-chainlit_app/README.md
 chainlit_app/Dockerfile
 chainlit_app/.gcloudignore
 

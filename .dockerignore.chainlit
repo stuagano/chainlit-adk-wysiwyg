@@ -1,0 +1,27 @@
+# Dockerignore for Chainlit-only deployment
+# Excludes everything except chainlit_app directory
+
+# Exclude everything by default
+*
+
+# Include only chainlit_app
+!chainlit_app/
+!chainlit_app/**
+
+# Exclude chainlit_app build artifacts and caches
+chainlit_app/.venv/
+chainlit_app/__pycache__/
+chainlit_app/*.pyc
+chainlit_app/*.pyo
+chainlit_app/*.pyd
+chainlit_app/.Python
+chainlit_app/.pytest_cache/
+chainlit_app/.coverage
+chainlit_app/htmlcov/
+
+# Exclude sensitive files
+chainlit_app/.env
+chainlit_app/*.env
+chainlit_app/*credentials*.json
+chainlit_app/*.pem
+chainlit_app/*.key

@@ -418,7 +418,48 @@ See [PODMAN.md](./PODMAN.md)
 
 ## 🚢 Deployment
 
-### Deploy to GCP Cloud Run
+### Standalone Chainlit Deployment (Recommended)
+
+Deploy only the Chainlit application as a dedicated instance to Cloud Run. This provides:
+- ✅ Smaller container size (Python only, no Node.js)
+- ✅ Better security (no development tools)
+- ✅ Easier scaling and lower costs
+
+#### Quick Deployment
+
+```bash
+# 1. Set your GCP project
+export GCP_PROJECT_ID="your-project-id"
+
+# 2. Deploy to Cloud Run
+./scripts/deploy-chainlit.sh --project-id $GCP_PROJECT_ID --region us-central1 --no-auth
+```
+
+#### Manual Deployment
+
+```bash
+# 1. Create .env file in chainlit_app/
+cd chainlit_app
+cp .env.example .env
+# Edit .env and add your API keys
+
+# 2. Build and deploy
+cd ..
+gcloud builds submit --tag gcr.io/PROJECT_ID/chainlit-app --dockerfile=Dockerfile.chainlit .
+gcloud run deploy chainlit-app \
+  --image gcr.io/PROJECT_ID/chainlit-app \
+  --platform managed \
+  --region us-central1 \
+  --port 8000 \
+  --set-env-vars="GEMINI_API_KEY=your_key" \
+  --allow-unauthenticated
+```
+
+**📖 Complete deployment guide:** See [docs/CHAINLIT_DEPLOYMENT.md](./docs/CHAINLIT_DEPLOYMENT.md)
+
+### Full Stack Deployment (UI Builder + Chainlit)
+
+For deploying both the UI builder and Chainlit together:
 
 1. **Configure GCP Settings** in the UI:
    - Project ID
@@ -430,7 +471,7 @@ See [PODMAN.md](./PODMAN.md)
    - Click "Generate Code"
    - Downloads include Dockerfile and deployment configs
 
-3. **Deploy** (from generated code):
+3. **Deploy** using the main Dockerfile:
 
 ```bash
 # Authenticate with GCP
@@ -452,6 +493,7 @@ Set these in your deployment environment:
 GEMINI_API_KEY=your_production_api_key
 NODE_ENV=production
 PORT=8080  # Cloud Run default
+CHAINLIT_PORT=8000  # For standalone Chainlit
 ```
 
 ---
